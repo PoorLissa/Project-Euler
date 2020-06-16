@@ -1,0 +1,577 @@
+#pragma once
+
+#include <vector>
+#include <string>
+#include <windows.h>
+
+// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
+
+#define doPrint(val) std::cout << val << std::endl;
+
+// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
+
+class loopCounter {
+
+	public:
+		loopCounter(const size_t MAX) : _maxCounter(MAX/100), _counter(0), _cnt(0)
+		{
+		}
+
+		void operator ++(int a)
+		{
+			if (++_counter == _maxCounter)
+			{
+				std::cout << ".";
+				_counter = 0;
+
+				if (++_cnt == 33)
+				{
+					std::cout << std::endl;
+					_cnt = 0;
+				}
+			}
+		}
+
+	private:
+		size_t _counter, _maxCounter, _cnt;
+};
+
+// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
+
+template <class Type>
+void validateResult(const Type &expected, const Type &answer)
+{
+	#define clGreen		FOREGROUND_GREEN|								  FOREGROUND_INTENSITY
+	#define clWhite		FOREGROUND_RED	|FOREGROUND_GREEN|FOREGROUND_BLUE
+	#define clYellow	FOREGROUND_GREEN|FOREGROUND_RED	 |				  FOREGROUND_INTENSITY
+	#define clRed		FOREGROUND_RED	|								  FOREGROUND_INTENSITY
+
+	auto console = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	std::cout << "\n -- Result: ";
+
+	if (expected == answer)
+	{
+		SetConsoleTextAttribute(console, clGreen);
+		std::cout << "OK";
+	}
+	else
+	{
+		SetConsoleTextAttribute(console, clRed);
+		std::cout << "Fail";
+	}
+
+	SetConsoleTextAttribute(console, clWhite);
+
+	std::cout << " --" << std::endl;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Return binary representation of a number as a string
+std::string base10_to_base2(size_t num)
+{
+	std::string res;
+	size_t n = 1;
+
+	while (n <= num)
+	{
+		res = (num & n ? "1" : "0") + res;
+		n *= 2;
+	}
+
+	return res;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Check if a string is palindromic
+bool isPalindromic(const std::string& str)
+{
+	size_t len = str.length();
+
+	for (size_t i = 0; i < len / 2; i++)
+		if (str[i] != str[len-i-1])
+			return false;
+
+	return true;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Check if the number is palindromic (in base 10)
+bool isPalindromic_base10(size_t n)
+{
+	size_t nOld = n, nNew = 0, dec = 0;
+
+	while (n)
+	{
+		size_t digit = n % 10;
+		nNew = 10 * nNew + digit;
+		n = n / 10;
+	}
+
+	return nOld == nNew;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Check if the number is palindromic (in base 2)
+bool isPalindromic_base2(size_t num)
+{
+	return isPalindromic(base10_to_base2(num));
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// If the number is Pandigital [1..n]
+bool isPandigital(size_t num)
+{
+	int cnt = 0, digit = 0;
+	unsigned int bin = 0;
+
+	while (num)
+	{
+		if (!(digit = num % 10))
+			return false;
+
+		bin |= 1 << --digit;
+		num /= 10;
+		cnt++;
+	}
+
+	return bin == (1 << cnt) - 1;
+};
+
+// -----------------------------------------------------------------------------------------------
+
+// If the number is Pandigital [min..max]
+template<class Type>
+bool isPandigital(Type num, unsigned int min, unsigned int max)
+{
+	unsigned int digit = 0;
+	Type bin = 0;
+
+	while (num)
+	{
+		if ((digit = num % 10) < min)
+			return false;
+
+		bin |= Type(1) << digit;
+		num /= 10;
+	}
+
+	bin = bin >> min;
+
+	return bin == (1 << (max - min + 1)) - 1;
+};
+
+// -----------------------------------------------------------------------------------------------
+
+//	n ==> n / 2  (n is even)
+//	n ==> 3n + 1 (n is odd)
+size_t getCollatzSequenceLength(size_t startingNum)
+{
+	size_t cnt = 1;
+
+	while (startingNum > 1)
+	{
+		if (startingNum & 1)
+			startingNum = 3 * startingNum + 1;
+		else
+			startingNum = startingNum >> 1;
+
+		cnt++;
+	}
+
+	return cnt;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Splits number into vector
+// Tags: parse, split, divide
+void split(std::vector<int> &vec, size_t num)
+{
+	vec.clear();
+
+	while (num)
+	{
+		size_t rem = num % 10;
+		vec.push_back((int)rem);
+		num /= 10;
+	}
+
+	return;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Splits number into map
+// Tags: parse, split, divide
+template<class Type1, class Type2>
+void split(std::map<Type1, Type2> &map, size_t num)
+{
+	map.clear();
+
+	while (num)
+	{
+		Type1 rem = num % 10;
+
+		if(!map.count(rem))
+			map[rem] = Type2();
+		num /= 10;
+	}
+
+	return;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Splits string into into vector using delimiter
+// Tags: parse, split, divide
+void split(const std::string &str, std::vector<std::string> &vec, const char delim = ' ')
+{
+	vec.clear();
+	size_t pos1 = 0, pos2 = 0;
+
+	while (pos2 != std::string::npos)
+	{
+		pos2 = str.find(delim, pos1);
+		vec.emplace_back(str.substr(pos1, pos2 - pos1));
+		pos1 = pos2 + 1;
+	}
+
+	return;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Converts number to in its text representation
+std::string numToStr(size_t n)
+{
+	std::string res;
+	std::vector<int> vec;
+
+	size_t cnt = 0, next = 0;
+
+	split(vec, n);
+
+	std::string str1[] = { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine" };
+	std::string str2[] = { "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety" };
+	std::string str3[] = { "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen" };
+
+	for (auto iter = vec.rbegin(); iter != vec.rend(); ++iter)
+	{
+		size_t position = vec.size() - cnt,
+			digit = vec[position - 1];
+
+		switch (position)
+		{
+			case 1:
+				if (digit > 0)
+					res += str1[digit - 1];
+				break;
+
+			case 2:
+				if (digit)
+				{
+					if (digit > 1)
+					{
+						res += str2[digit - 2];
+						res += " ";
+					}
+					else
+					{
+						next = vec[position - 2];
+						res += str3[next];
+						++iter;
+					}
+				}
+				break;
+
+			case 3:
+				if (digit)
+				{
+					res += str1[digit - 1];
+					res += " hundred ";
+				}
+
+				for (int i = 0; i < 2; i++)
+				{
+					next = vec[position - 2 - i];
+
+					if (next)
+					{
+						res += "and ";
+						break;
+					}
+				}
+				break;
+
+			case 4:
+				res += str1[digit - 1];
+				res += " thousand ";
+				break;
+		}
+
+		cnt++;
+	}
+
+	return res;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+bool isLeapYear(size_t year)
+{
+	return !(year % 4) && (year % 100) && (year % 400);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// 0 = Jan, 11 = Dec
+size_t getDaysInMonth(size_t month, bool isLeap)
+{
+	switch (month)
+	{
+		case 3:
+		case 5:
+		case 8:
+		case 10:
+			return 30;
+
+		case 1:
+			return isLeap ? 29 : 28;
+	}
+
+	return 31;
+};
+
+// -----------------------------------------------------------------------------------------------
+
+// Get all possible permutations of [srcVec's] elements
+void getPermutations(std::vector<std::string>& resVec, std::vector<char> srcVec)
+{
+	if (srcVec.size() == 2)
+	{
+		std::string s;
+
+		s  = srcVec[0];
+		s += srcVec[1];
+		resVec.emplace_back(s);
+
+		s  = srcVec[1];
+		s += srcVec[0];
+		resVec.emplace_back(s);
+	}
+	else
+	{
+		for (size_t i = 0; i < srcVec.size(); i++)
+		{
+			std::vector<char> vec_char;
+			std::vector<std::string> vec_str;
+
+			for (size_t j = 0; j < srcVec.size(); j++)
+				if (j != i)
+					vec_char.emplace_back(srcVec[j]);
+
+			getPermutations(vec_str, vec_char);
+
+			for (auto str : vec_str)
+				resVec.emplace_back(srcVec[i] + str);
+		}
+	}
+
+	return;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+void getPermutations(std::vector<size_t>& resVec, std::vector<int>& srcVec)
+{
+	std::vector<size_t> vec_tmp;
+
+	if (srcVec.size() == 2)
+	{
+		resVec.emplace_back(srcVec[0] * 10 + srcVec[1]);
+		resVec.emplace_back(srcVec[1] * 10 + srcVec[0]);
+	}
+	else
+	{
+		std::vector<int>	vec_singles;
+		std::vector<size_t>	vec_permutations;
+
+		for (size_t i = 0; i < srcVec.size(); i++)
+		{
+			for (size_t j = 0; j < srcVec.size(); j++)
+				if (j != i)
+					vec_singles.emplace_back(srcVec[j]);
+
+			getPermutations(vec_permutations, vec_singles);
+
+			for (auto vec = vec_permutations.begin(); vec != vec_permutations.end(); ++vec)
+			{
+				size_t num = srcVec[i], dec = 10, size = vec_permutations.size(), j = 2;
+
+				while (size != 1)
+				{
+					size /= j++;
+					 dec *= 10;
+				}
+
+				resVec.emplace_back(dec*num + *vec);
+			}
+
+			vec_singles.clear();
+			vec_permutations.clear();
+		}
+	}
+
+	return;
+}
+// -----------------------------------------------------------------------------------------------
+
+// Get all possible permutations of [srcVec's] elements
+template<class Type>
+void getPermutations(std::vector<std::vector<Type>>& resVec, std::vector<Type> &srcVec)
+{
+	std::vector<Type> vec_tmp;
+
+	if (srcVec.size() == 2)
+	{
+		resVec.emplace_back(vec_tmp);
+		resVec.back().emplace_back(srcVec[0]);
+		resVec.back().emplace_back(srcVec[1]);
+
+		resVec.emplace_back(vec_tmp);
+		resVec.back().emplace_back(srcVec[1]);
+		resVec.back().emplace_back(srcVec[0]);
+	}
+	else
+	{
+		std::vector<Type>				vec_singles;
+		std::vector<std::vector<Type>>	vec_vectors;
+
+		for (size_t i = 0; i < srcVec.size(); i++)
+		{
+			for (size_t j = 0; j < srcVec.size(); j++)
+				if (j != i)
+					vec_singles.emplace_back(srcVec[j]);
+
+			getPermutations(vec_vectors, vec_singles);
+
+			for(auto vec = vec_vectors.begin(); vec != vec_vectors.end(); ++vec)
+			{
+				vec_tmp.emplace_back(srcVec[i]);
+
+				for (auto v = vec->begin(); v != vec->end(); ++v)
+					vec_tmp.emplace_back(*v);
+
+				resVec.emplace_back(vec_tmp);
+				vec_tmp.clear();
+			}
+
+			vec_singles.clear();
+			vec_vectors.clear();
+		}
+	}
+
+	return;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Move Fibonacci sequence forward by 1
+// f2 holds the resulting number
+template<class Type>
+void getNextFibonacci(Type& f1, Type& f2)
+{
+	Type tmp = f2;
+	f2 = f2 + f1;
+	f1 = tmp;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Factorial of a number
+template<class Type>
+Type getFactorial(Type num)
+{
+	if (num > 1)
+		return num * getFactorial(num - 1);
+
+	return 1;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Factorial of a number, with cache
+template<class inType, class outType>
+outType * getFactorial(std::map<inType, outType> &map, inType num)
+{
+	if (!map.count(num))
+	{
+		if (num > 1)
+		{
+			outType outNum(num);
+			outType res = outNum * (*getFactorial(map, num-1));
+			map[num] = std::move(res);
+		}
+		else
+		{
+			map[num] = outType(1);
+		}
+	}
+
+	return &map[num];
+}
+
+// -----------------------------------------------------------------------------------------------
+
+void getRightDigitRotations(size_t num, std::vector<size_t> &vec)
+{
+	size_t oldNum = num;
+	vec.clear();
+	vec.push_back(num);
+
+	while (oldNum > 9)
+	{
+		size_t lastDigit = num % 10;
+		size_t cnt = num = num / 10;
+
+		while (cnt)
+		{
+			cnt /= 10;
+			lastDigit *= 10;
+		}
+
+		num += lastDigit;
+		vec.push_back(num);
+
+		oldNum /= 10;
+	}
+}
+
+// -----------------------------------------------------------------------------------------------
+
+void reverseStr(std::string &str)
+{
+	char ch;
+	size_t i = 0, j = str.length()-1;
+
+	while (i < j)
+	{
+		ch = str[i];
+		str[i++] = str[j];
+		str[j--] = ch;
+	}
+}
+
+// -----------------------------------------------------------------------------------------------

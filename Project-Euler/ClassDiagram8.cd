@@ -1,0 +1,172 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1" MembersFormat="NameAndType">
+  <Class Name="sqlHelper::qHelper">
+    <Position X="0.5" Y="3.5" Width="3" />
+    <TypeIdentifier>
+      <HashCode>AAAQAAAEAAAAAAAAAAQAQAAAAAAIAAJAAAAAACAAAAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qAny">
+    <Position X="2" Y="9" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAgAAAAAAAAABAAAAAgAAABAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qSelect">
+    <Position X="5.5" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAggAAAAAAAAAAAAAAAAAAABAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qUpdate">
+    <Position X="9.25" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAEAAAAAAAAAEAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qFrom">
+    <Position X="10.5" Y="7.5" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAEAAAAAAAAAAAAgAABAAIEAAAAIAAAAAAAAAAI=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qWhere">
+    <Position X="18.25" Y="7.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>QAAAAAAAAAAAAAAAAAAgAACAAAAAAAAAAAAAAAAAAAI=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qLeftJoin">
+    <Position X="0.5" Y="7.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAgAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAI=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qRightJoin">
+    <Position X="3" Y="7.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAACAAACAAAAAAAAAAI=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qInnerJoin">
+    <Position X="5.5" Y="7.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAABI=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qOn">
+    <Position X="8" Y="7.5" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAEEAAAAAAAAAAAAAAABAAAAAAAAIAAAAAAAAAAI=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qAnd">
+    <Position X="16.25" Y="7.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAI=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qOrderBy">
+    <Position X="11.25" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qGroupBy">
+    <Position X="3.75" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAI=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qSet">
+    <Position X="4.5" Y="9" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qValues">
+    <Position X="7.25" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qAs">
+    <Position X="10" Y="5.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAEAAAAAAAAAgAAAAAAAAAAAAAAAAAAABAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qDeleteFrom">
+    <Position X="7" Y="9.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qInsertInto">
+    <Position X="13.25" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAEAAAAAAAAAAAABAAAAAAAAAIAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qCommandBase">
+    <Position X="8.25" Y="0.5" Width="2.75" />
+    <TypeIdentifier>
+      <HashCode>BAAAAAAAAEAABAAgAAAAAAAAQAABAAAAAAAAABEAAAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::qSummable">
+    <Position X="16" Y="3.5" Width="3" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAEAAAAAAAAAIAAAAAoAAAAAAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::WhereFamily">
+    <Position X="12" Y="5.75" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAgAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="sqlHelper::AndFamily">
+    <Position X="17.5" Y="5.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAIAAAAAAAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Enum Name="sqlHelper::CommandsEnum">
+    <Position X="16" Y="9.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>YoQQACChAAAABAAAAAYAAAAAAAEAQAAAAAAgQCAAAMA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Enum Name="sqlHelper::Params">
+    <Position X="14.25" Y="9.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAA=</HashCode>
+      <FileName>__sqlHelper_2.h</FileName>
+    </TypeIdentifier>
+  </Enum>
+  <Font Name="Tahoma" Size="8.25" />
+</ClassDiagram>
