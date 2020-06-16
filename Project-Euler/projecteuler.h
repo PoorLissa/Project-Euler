@@ -3755,23 +3755,23 @@ void func62()
 
 // -----------------------------------------------------------------------------------------------
 
-void aaa(size_t i, size_t a)
-{
-	std::cout << std::endl;
-	std::cout << " thread says : " << a << std::endl;
-	std::cout << std::endl;
-}
-
 void func63()
 {
 	size_t res = 0, answer = 127035954683;
 
+	myThreadLoop_2 th(3);
+	std::mutex& m = th.getMutex(myThreadLoop_2::MUTEX_CONSOLE);
 
-/*
-	myThreadLoop_2 th(1);
+	auto mainFunc = [&](size_t i, size_t id, size_t data)
+	{
+		{
+			std::lock_guard<std::mutex> doLock(m);
+				std::cout << " -- thread [" << id << "] says : i = " << i << ", data = " << data << std::endl;
+		}
+	};
 
-	th.exec(aaa, 12345, 999);
-*/
+
+	th.exec(mainFunc, 7, 11, 12345);
 
 
 	std::cout << "\n res = " << res << std::endl;

@@ -130,7 +130,20 @@ class myThreadLoop {
 
 // -----------------------------------------------------------------------------------------------------------------------
 
-#if 0
+/*
+	myThreadLoop_2 th(3);
+	std::mutex& m = th.getMutex(myThreadLoop_2::MUTEX_CONSOLE);
+
+	auto mainFunc = [&](size_t i, size_t id, size_t data)
+	{
+		{
+			std::lock_guard<std::mutex> doLock(m);
+				std::cout << " -- thread [" << id << "] says : i = " << i << ", data = " << data << std::endl;
+		}
+	};
+
+	th.exec(mainFunc, 7, 11, 12345);
+*/
 
 class myThreadLoop_2 {
 
@@ -147,60 +160,51 @@ class myThreadLoop_2 {
 		std::mutex& getMutex(const mutexNames name) { return _mutex[name]; }
 
 		template<class _funcType, class ..._ARGS>
-		void exec(_funcType _func, _ARGS ... _args)
+		void exec(_funcType _func, size_t min, size_t max, _ARGS&&... _args)
 		{
-			size_t id = 666;
+			std::vector<std::shared_ptr<std::thread>> vecThreads;
+			_doStop = false;
 
-			//auto bound = std::bind(&myThreadLoop_2::invoke_impl<_ARGS&...>, this, std::placeholders::_1, std::forward<_ARGS>(_args)...);
+			for (size_t id = 0; id < _threadsNum; id++)
+			{
+				vecThreads.emplace_back(
+					std::make_shared<std::thread> (
 
-			auto bound = std::bind(_func, std::forward<_ARGS>(_args)..., std::placeholders::_2);
+						&myThreadLoop_2::threadFunc<_funcType, _ARGS...>, this, id, min, max, _func, std::forward<_ARGS>(_args)...
 
-//			bound(123, 1, 2, 3);
+					));
+			}
 
-#if 1
-			std::thread th(
-
-				& myThreadLoop_2::threadFunc<_ARGS...>,
-					this,
-					id,
-					//std::bind(_func, this, std::placeholders::_1, _args...)
-
-					bound
-
-					, std::forward<_ARGS>(_args)...
-
-				//& myThreadLoop_2::threadFunc, this, id, std::bind(_func, _args...)
-				// std::placeholders::_1
-			);
-
-			th.join();
-#endif
-		}
-
-		template <typename... Args>
-		void invoke_impl(int a, Args&&...)
-		{
-			std::cout << " == invoke_impl == " << a << std::endl;
+			for (auto th : vecThreads)
+				th->join();
 		}
 
 	private:
 
-		//void threadFunc(size_t id, func_type externFunc)
-
-		template <typename... Args>
-		void threadFunc(size_t id, func_type externFunc, Args&&...)
-		//void threadFunc(size_t id, func_type externFunc)
+		template <class _funcType, class ... _ARGS>
+		void threadFunc(size_t id, size_t min, size_t max, _funcType externFunc, _ARGS&&... _args)
 		{
+			auto boundFunc = std::bind(externFunc, std::placeholders::_1, std::placeholders::_2, std::forward<_ARGS>(_args)...);
+
+			if (!_isSilent)
 			{
 				std::lock_guard<std::mutex> doLock(_mutex[MUTEX_CONSOLE]);
-					std::cout << " -- thread " << id << " has started" << std::endl;
+					std::cout << " -- thread [" << id << "] has started" << std::endl;
 			}
 
-			externFunc();
+			// Calling main external function in the loop
+			for (size_t i = min + id; i <= max; i += _threadsNum)
+			{
+				if (_doStop)
+					break;
 
+				boundFunc(i, id);
+			}
+
+			if (!_isSilent)
 			{
 				std::lock_guard<std::mutex> doLock(_mutex[MUTEX_CONSOLE]);
-					std::cout << " -- thread " << id << " has finished" << std::endl;
+					std::cout << " -- thread [" << id << "] has finished" << std::endl;
 			}
 		}
 
@@ -211,5 +215,3 @@ class myThreadLoop_2 {
 		bool		_doStop;
 		bool		_isSilent;
 };
-
-#endif
