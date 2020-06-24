@@ -138,11 +138,37 @@ class myThreadLoop {
 	{
 		{
 			std::lock_guard<std::mutex> doLock(m);
-				std::cout << " -- thread [" << id << "] says : i = " << i << ", data = " << data << std::endl;
+				std::cout << " -- th[" << id << "] says : i = " << i << ", data = " << data << std::endl;
 		}
 	};
 
 	th.exec(mainFunc, 7, 11, 12345);
+
+	========================================================================================================
+
+	myThreadLoop_2 th(3);
+	std::mutex& m = th.getMutex(myThreadLoop_2::MUTEX_CONSOLE);
+
+	auto mainFunc = [&](size_t i, size_t id)
+	{
+		size_t zzz = i * i;
+
+		if (zzz > 1000000)
+		{
+			th.doStop();
+
+			std::lock_guard<std::mutex> doLock(m);
+				std::cout << " -- th[" << id << "] says : i = " << i << ", data = " << i << std::endl;
+
+			std::lock_guard<std::mutex> lck(th.getMutex(myThreadLoop_2::MUTEX_DATA));
+				res = i;
+		}
+	};
+
+	th.exec(mainFunc, 1, 555*555);
+
+	if (th.isFound())
+		std::cout << "\n res = " << res << std::endl;
 */
 
 class myThreadLoop_2 {
@@ -157,7 +183,9 @@ class myThreadLoop_2 {
 		{
 		}
 
-		std::mutex& getMutex(const mutexNames name) { return _mutex[name]; }
+		std::mutex&		getMutex	(const mutexNames name)	{ return _mutex[name];	}
+		void			doStop		()						{ _doStop = true;		}
+		bool			isFound		() const				{ return _doStop;		}
 
 		template<class _funcType, class ..._ARGS>
 		void exec(_funcType _func, size_t min, size_t max, _ARGS&&... _args)
@@ -170,7 +198,7 @@ class myThreadLoop_2 {
 				vecThreads.emplace_back(
 					std::make_shared<std::thread> (
 
-						&myThreadLoop_2::threadFunc<_funcType, _ARGS...>, this, id, min, max, _func, std::forward<_ARGS>(_args)...
+						& myThreadLoop_2::threadFunc<_funcType, _ARGS...>, this, id, min, max, _func, std::forward<_ARGS>(_args)...
 
 					));
 			}

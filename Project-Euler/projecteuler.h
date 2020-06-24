@@ -3757,33 +3757,142 @@ void func62()
 
 void func63()
 {
-	size_t res = 0, answer = 127035954683;
+	size_t res = 0, answer = 49;
 
-	myThreadLoop_2 th(3);
-	std::mutex& m = th.getMutex(myThreadLoop_2::MUTEX_CONSOLE);
-
-	auto mainFunc = [&](size_t i, size_t id, size_t data)
+	auto getOrder = [](size_t num) -> int
 	{
-		{
-			std::lock_guard<std::mutex> doLock(m);
-				std::cout << " -- thread [" << id << "] says : i = " << i << ", data = " << data << std::endl;
-		}
+		int res = 0;
+
+		while (num && ++res)
+			num /= 10;
+
+		return res;
 	};
 
+	// -------------------------------------------------------------------------------------------
 
-	th.exec(mainFunc, 7, 11, 12345);
+	for (size_t order = 1; order < size_t(-1); order++)
+	{
+		size_t num = 0, cnt = 0, ord = 0;
 
+		while (ord <= order)
+		{
+			stringNum NUM = stringNum_Pow(++num, order);
+
+			ord = NUM.get().length();
+
+			if(ord == order)
+				cnt++;
+		}
+
+		if (!cnt)
+			break;
+
+		res += cnt;
+
+		std::cout << " order = " << order << std::endl;
+	}
 
 	std::cout << "\n res = " << res << std::endl;
 
 	validateResult(res, answer);
 }
+
+// -----------------------------------------------------------------------------------------------
+
+void func64()
+{
+	size_t res = 0, answer = 1322;
+
+	auto get1st = [](size_t num) -> size_t
+	{
+		size_t i = 1;
+
+		while (i++)
+			if (i * i > num)
+				break;
+
+		return --i;
+	};
+
+	auto getSequence = [](size_t N, size_t n1, std::vector<size_t> &vec) -> void
+	{
+		size_t a = 1, b = 0, a_old = -1, b_old = -1;
+
+		vec.clear();
+
+		while (1)
+		{
+			size_t A = 2 * n1 - b;
+			size_t B = (N - (n1 - b) * (n1 - b)) / a;
+			size_t C = A / (B ? B : 1);
+
+			A = A - C * B;
+			a = B;
+			b = A;
+
+			if (a == a_old && b == b_old)
+				break;
+
+			if (!vec.size())
+			{
+				a_old = a;
+				b_old = b;
+			}
+
+			vec.push_back(C);
+		}
+	};
+
+	// -------------------------------------------------------------------------------------------
+
+	std::vector<size_t> vec;
+
+	for (size_t num = 2; num < 10001; num++)
+	{
+		size_t SQRT = static_cast<size_t>(sqrt(num));
+
+		if (num != SQRT * SQRT)
+		{
+			size_t n1 = get1st(num);
+			getSequence(num, n1, vec);
+
+			std::cout << " -- num = " << num << "; n1 = " << n1 << "; period = " << vec.size();
+/*
+			for (auto n : vec)
+				std::cout << n << " ";
+*/
+			if (vec.size() & 1)
+				res++;
+
+			std::cout << std::endl;
+		}
+	}
+
+	std::cout << "\n res = " << res << std::endl;
+
+	validateResult(res, answer);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+void func65()
+{
+	size_t res = 0, answer = 1322;
+
+	std::cout << "\n res = " << res << std::endl;
+
+	validateResult(res, answer);
+}
+
+// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 
 void func00()
 {
-	func63();
+	func65();
 }
 
 // -----------------------------------------------------------------------------------------------

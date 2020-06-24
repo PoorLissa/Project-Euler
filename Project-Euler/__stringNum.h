@@ -27,6 +27,7 @@ class stringNum {
 		bool	   operator > (size_t);
 		bool	   operator < (stringNum &);
 		bool	   operator <=(stringNum &);
+		bool	   operator < (size_t);
 		bool	   operator ==(const stringNum &) const;
 		bool	   operator ==(size_t);
 		stringNum& operator ++();
@@ -226,6 +227,13 @@ bool stringNum::operator <(stringNum& other)
 		return _str.length() < other._str.length();
 
 	return _str < other._str;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+bool stringNum::operator <(size_t other)
+{
+	return *this < stringNum(other);
 }
 
 // -----------------------------------------------------------------------------------------------
