@@ -183,15 +183,17 @@ class myThreadLoop_2 {
 		{
 		}
 
-		std::mutex&		getMutex	(const mutexNames name)	{ return _mutex[name];	}
-		void			doStop		()						{ _doStop = true;		}
-		bool			isFound		() const				{ return _doStop;		}
+		std::mutex&		getMutex	(const mutexNames name)	{ return _mutex[name];	 }
+		void			doStop		()						{ _doStop = true;		 }
+		bool			isFound		() const				{ return _doStop;		 }
+		size_t			getActive	() const				{ return _activeThreads; }
 
 		template<class _funcType, class ..._ARGS>
 		void exec(_funcType _func, size_t min, size_t max, _ARGS&&... _args)
 		{
 			std::vector<std::shared_ptr<std::thread>> vecThreads;
 			_doStop = false;
+			_activeThreads = _threadsNum;
 
 			for (size_t id = 0; id < _threadsNum; id++)
 			{
@@ -234,11 +236,16 @@ class myThreadLoop_2 {
 				std::lock_guard<std::mutex> doLock(_mutex[MUTEX_CONSOLE]);
 					std::cout << " -- thread [" << id << "] has finished" << std::endl;
 			}
+
+			{
+				std::lock_guard<std::mutex> doLock(_mutex[MUTEX_DATA]);
+					_activeThreads--;
+			}
 		}
 
 	private:
 
-		size_t		_threadsNum;
+		size_t		_threadsNum, _activeThreads;
 		std::mutex	_mutex[2];
 		bool		_doStop;
 		bool		_isSilent;

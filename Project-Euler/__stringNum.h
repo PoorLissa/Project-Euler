@@ -18,9 +18,11 @@ class stringNum {
 		std::string& get() { return _str; }
 
 		stringNum  operator  +(stringNum &);
+		stringNum  operator  +(size_t);
 		stringNum  operator  -(stringNum &);
 		stringNum  operator  -(size_t);
 		stringNum  operator  *(stringNum &);
+		stringNum  operator  *(size_t);
 		stringNum  operator  /(stringNum &);
 		bool	   operator > (stringNum &);
 		bool	   operator >=(stringNum &);
@@ -92,6 +94,13 @@ stringNum stringNum::operator +(stringNum& other)
 		res = '1' + res;
 
 	return stringNum(res);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+stringNum stringNum::operator +(size_t other)
+{
+	return *this + stringNum(other);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -293,6 +302,13 @@ stringNum stringNum::operator *(stringNum &other)
 	}
 
 	return res;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+stringNum stringNum::operator *(size_t other)
+{
+	return *this * stringNum(other);
 }
 
 // -----------------------------------------------------------------------------------------------
