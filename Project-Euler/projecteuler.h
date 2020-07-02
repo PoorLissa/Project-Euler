@@ -3940,6 +3940,7 @@ void func65()
 // -----------------------------------------------------------------------------------------------
 
 // Google Pell's Equasion
+// Brute force is TERRIBLY slow
 void func66()
 {
 	size_t res = 0, answer = 661;
@@ -4185,6 +4186,207 @@ void func67()
 
 void func68()
 {
+	typedef std::vector<int> myVector;
+
+	std::string answer = "6531031914842725";
+
+	auto getSolution = [](myVector &vec, std::set<std::string> &set) -> size_t
+	{
+		size_t size = vec.size(), half = size / 2, sumOld = 0, min = -1, idx = 0;
+
+		std::string str;
+		std::vector<std::string> strVec;
+
+		for (size_t i = 0; i < half; i++)
+		{
+			size_t sum    = 0;
+			size_t first  = i;
+			size_t second = i + 1 == half ? 0 : i + 1;
+			size_t third  = half + i;
+
+			sum = vec[first] + vec[second] + vec[third];
+
+			if (i > 0 && sum != sumOld)
+				return 0;
+
+			sumOld = sum;
+
+			str = std::to_string(vec[third]) + std::to_string(vec[second]) + std::to_string(vec[first]);
+			strVec.push_back(str);
+
+			if (vec[third] < min)
+			{
+				min = vec[third];
+				idx = strVec.size() - 1;
+			}
+		}
+
+		switch (idx)
+		{
+			case 0:
+				str = strVec[0] + strVec[4] + strVec[3] + strVec[2] + strVec[1];
+				break;
+
+			case 1:
+				str = strVec[1] + strVec[0] + strVec[4] + strVec[3] + strVec[2];
+				break;
+
+			case 2:
+				str = strVec[2] + strVec[1] + strVec[0] + strVec[4] + strVec[3];
+				break;
+
+			case 3:
+				str = strVec[3] + strVec[2] + strVec[1] + strVec[0] + strVec[4];
+				break;
+
+			case 4:
+				str = strVec[4] + strVec[3] + strVec[2] + strVec[1] + strVec[0];
+				break;
+		}
+
+		if(str.length() == 16u)
+			set.insert(str);
+
+		return sumOld;
+	};
+
+	myVector srcVec{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+	std::vector<myVector> resVec;
+
+	getPermutations(resVec, srcVec);
+
+	std::set<std::string> s;
+
+	for (size_t i = 0; i < resVec.size(); i++)
+	{
+		getSolution(resVec[i], s);
+	}
+
+	std::string res = *s.rbegin();
+
+	std::cout << "\n res = " << res << std::endl;
+
+	validateResult(answer, res);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Took 13 hours!
+void func69()
+{
+	myPrime pr(10);
+	myPrime::container setPrimes;
+	pr.getPrimes(setPrimes, 1, 1000123);
+
+	std::map<size_t, std::set<size_t>> map_of_sets;
+
+	myThreadLoop th(10);
+
+	// -------------------------------------------------------------------------------------
+
+	auto isPrime = [](std::set<size_t> &set, size_t num) -> bool
+	{
+		if (set.count(num))
+			return true;
+
+		return false;
+	};
+
+	auto phi = [&](std::set<size_t>& setPrimes, std::map<size_t, std::set<size_t>> &map, size_t n) -> size_t
+	{
+		if (isPrime(setPrimes, n))
+			return n - 1;
+
+		size_t qty = 1;
+
+		std::set<size_t>* pSetN = &map[n];
+
+		for (size_t i = 2; i < n; i++)
+		{
+			if (n % i != 0)
+			{
+				if (isPrime(setPrimes, i))
+				{
+					qty++;
+				}
+				else
+				{
+					bool ok = true;
+
+					std::set<size_t>* pSet = &map[i];
+
+					for (auto num : *pSet)
+					{
+						if (num > 1 && pSetN->count(num))
+						{
+							ok = false;
+							break;
+						}
+					}
+
+					if (ok)
+						qty++;
+				}
+			}
+		}
+
+		return qty;
+	};
+
+	auto getSetsOfDividerts = [&](size_t i, size_t id, std::map<size_t, std::set<size_t>> &map)
+	{
+		std::set<size_t> set;
+		set.insert(1);
+		set.insert(i);
+
+		for (size_t n = 2; n <= i / 2; n++)
+			if (i % n == 0)
+				set.insert(n);
+
+		std::lock_guard<std::mutex> doLockData(th.getMutex(myThreadLoop::MUTEX_DATA));
+			map.emplace(i, set);
+	};
+
+	auto mainFunc = [&](size_t i, size_t id, double& max, size_t& res)
+	{
+		double RES = double(i) / phi(setPrimes, map_of_sets, i);
+
+		if (RES > max)
+		{
+			std::lock_guard<std::mutex> doLockData(th.getMutex(myThreadLoop::MUTEX_DATA));
+
+			if (RES > max)
+			{
+				max = RES;
+				res = i;
+
+				std::lock_guard<std::mutex> doLockConsole(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
+					std::cout << " -- th[" << id << "] says : i = " << i << ", max = " << max << std::endl;
+			}
+		}
+	};
+
+	// -------------------------------------------------------------------------------------
+
+	size_t N1 = 2, N2 = 1000000 + 1;
+
+	size_t res = 0, answer = 510510;
+
+	th.exec(getSetsOfDividerts, N1, N2, std::ref(map_of_sets));
+
+	double max = 0;
+
+	th.exec(mainFunc, N1, N2, std::ref(max), std::ref(res));
+
+	std::cout << "\n res = " << res << std::endl;
+
+	validateResult(answer, res);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+void func70()
+{
 
 }
 
@@ -4193,12 +4395,10 @@ void func68()
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
-// -----------------------------------------------------------------------------------------------
-// -----------------------------------------------------------------------------------------------
 
 void func00()
 {
-	func68();
+	func70();
 }
 
 // -----------------------------------------------------------------------------------------------

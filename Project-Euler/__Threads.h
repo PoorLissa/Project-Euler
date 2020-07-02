@@ -6,7 +6,7 @@
 
 
 
-class myThreadLoop {
+class myThreadLoop_old {
 
 	typedef std::function<void(size_t)> func_type_old;
 
@@ -16,7 +16,7 @@ class myThreadLoop {
 
 		enum mutexNames { MUTEX_DATA, MUTEX_CONSOLE };
 
-		myThreadLoop(size_t threadsNum, bool isSilent = true) : _threadsNum(threadsNum), _isSilent(isSilent)
+		myThreadLoop_old(size_t threadsNum, bool isSilent = true) : _threadsNum(threadsNum), _isSilent(isSilent)
 		{
 		}
 
@@ -131,47 +131,54 @@ class myThreadLoop {
 // -----------------------------------------------------------------------------------------------------------------------
 
 /*
-	myThreadLoop_2 th(3);
-	std::mutex& m = th.getMutex(myThreadLoop_2::MUTEX_CONSOLE);
+	myThreadLoop th(3);														// Will use 3 threads
 
-	auto mainFunc = [&](size_t i, size_t id, size_t data)
-	{
-		{
-			std::lock_guard<std::mutex> doLock(m);
-				std::cout << " -- th[" << id << "] says : i = " << i << ", data = " << data << std::endl;
-		}
+	struct data {															// Arbitrary external data
+		int  a;
 	};
 
-	th.exec(mainFunc, 7, 11, 12345);
-
-	========================================================================================================
-
-	myThreadLoop_2 th(3);
-	std::mutex& m = th.getMutex(myThreadLoop_2::MUTEX_CONSOLE);
-
-	auto mainFunc = [&](size_t i, size_t id)
+	auto mainFunc = [&](size_t i, size_t id, data &d, size_t &res)			// The function to call repeatedly
 	{
-		size_t zzz = i * i;
+		size_t iterNo = (i - id) / th.getNumThreads();						// Get this thread's current iteration number
 
-		if (zzz > 1000000)
+		if (iterNo % 100 == 0)												// Print out something
+		{
+			std::lock_guard<std::mutex> lockConsole(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
+				std::cout << " -- th[" << id << "] says : i = " << std::setw(4) << std::right << i << "; iterations passed: " << std::setw(3) << std::right << iterNo << std::endl;
+		}
+
+		if (iterNo % 200 == 0)												// Modify external data
+		{
+			std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_DATA));
+				d.a = 1;
+		}
+
+		if (iterNo == 878)													// Stop on condition
 		{
 			th.doStop();
 
-			std::lock_guard<std::mutex> doLock(m);
-				std::cout << " -- th[" << id << "] says : i = " << i << ", data = " << i << std::endl;
+			std::lock_guard<std::mutex> lockConsole(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
+				std::cout << std::endl;
+				std::cout << " -- th[" << id << "] says : i = " << i << "; Stop Condition Reached" << std::endl;
+				std::cout << std::endl;
 
-			std::lock_guard<std::mutex> lck(th.getMutex(myThreadLoop_2::MUTEX_DATA));
+			std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_DATA));
 				res = i;
 		}
 	};
 
-	th.exec(mainFunc, 1, 555*555);
+	size_t res;
+	data dat;
 
+	// Referenced data must be wrapped in std::ref in order to avoid calling several copy constructors
+	th.exec(mainFunc, 1, 3000, std::ref(dat), std::ref(res));
+
+	// Optional: check if the execution has been stopped on condition
 	if (th.isFound())
-		std::cout << "\n res = " << res << std::endl;
+		std::cout << "\n Res was found: res = " << res << std::endl;
 */
 
-class myThreadLoop_2 {
+class myThreadLoop {
 
 	typedef std::function<void()> func_type;
 
@@ -179,19 +186,21 @@ class myThreadLoop_2 {
 
 		enum mutexNames { MUTEX_DATA, MUTEX_CONSOLE };
 
-		myThreadLoop_2(size_t threadsNum, bool isSilent = true) : _threadsNum(threadsNum), _isSilent(isSilent)
+		myThreadLoop(size_t threadsNum, bool isSilent = true) : _threadsNum(threadsNum), _isSilent(isSilent)
 		{
 		}
 
-		std::mutex&		getMutex	(const mutexNames name)	{ return _mutex[name];	 }
-		void			doStop		()						{ _doStop = true;		 }
-		bool			isFound		() const				{ return _doStop;		 }
-		size_t			getActive	() const				{ return _activeThreads; }
+		std::mutex&		getMutex		(const mutexNames name)	{ return _mutex[name];	 }
+		void			doStop			()						{ _doStop = true;		 }
+		bool			isFound			() const				{ return _doStop;		 }
+		size_t			getActive		() const				{ return _activeThreads; }
+		size_t			getNumThreads	() const				{ return _threadsNum;	 }
 
 		template<class _funcType, class ..._ARGS>
 		void exec(_funcType _func, size_t min, size_t max, _ARGS&&... _args)
 		{
 			std::vector<std::shared_ptr<std::thread>> vecThreads;
+
 			_doStop = false;
 			_activeThreads = _threadsNum;
 
@@ -200,7 +209,7 @@ class myThreadLoop_2 {
 				vecThreads.emplace_back(
 					std::make_shared<std::thread> (
 
-						& myThreadLoop_2::threadFunc<_funcType, _ARGS...>, this, id, min, max, _func, std::forward<_ARGS>(_args)...
+						& myThreadLoop::threadFunc<_funcType, _ARGS...>, this, id, min, max, _func, std::forward<_ARGS>(_args)...
 
 					));
 			}
