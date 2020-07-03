@@ -4465,21 +4465,113 @@ void func70()
 
 void func71()
 {
+	size_t res = 0, answer = 428570, nom = 0, denom = 0;
+	const size_t N = 1000000;
+	double threeSeventh = 3.0 / 7.0, max = 0;
+
+	for (size_t d = N; d > 0; d--)
+	{
+		for (size_t n = 2*d/5; n < d; n++)
+		{
+			double fraction = double(n) / d;
+
+			if (fraction < threeSeventh)
+			{
+				if (fraction > max)
+				{
+					max = fraction;
+					nom = n;
+					denom = d;
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		if(d % 10000 == 0)
+			std::cout << " finished d = " << d << "; current fraction : " << nom << " / " << denom << std::endl;
+	}
+
+	std::cout << " fraction is : " << nom << " / " << denom << std::endl;
+
+	std::cout << "\n res = " << nom << std::endl;
+
+	validateResult(answer, nom);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+void func72()
+{
+	const size_t N = 1000000;
+	size_t res = 0, answer = 303963552391;
+
 	myThreadLoop th(10);
 
 	myPrime pr;
-	myPrime::container map;
-	pr.getPrimes(map, 1, 10000001);
+	myPrime::container mapPrimes;
+	pr.getPrimes(mapPrimes, 1, N+1);
 
-	auto mainFunc = [&](size_t i, size_t id, double& min, size_t& res)
+	// ---------------------------------------------------------------------
+
+	auto phi = [&pr](myPrime::container& map, size_t num) -> size_t
 	{
+		size_t res = 1;
+
+		if (num > 1)
+		{
+			if (map.count(num))
+			{
+				res = num - 1;
+			}
+			else
+			{
+				std::vector<size_t> vec;
+
+				pr.getPrimeFactors(num, map, vec);
+
+				size_t nom = num;
+				size_t denom = 1;
+
+				for (auto n : vec)
+				{
+					nom *= (n - 1);
+					denom *= n;
+				}
+
+				res = nom / denom;
+			}
+		}
+
+		return res;
 	};
 
-	// ------------------------------------------------------------------------
+	auto mainFunc = [&](size_t i, size_t id, size_t& res) -> void
+	{
+		size_t d = i, cnt = 0, iterNo = (i - id) / th.getThreadsTotal();
 
-	size_t res = 0, answer = 8319823;
+		if(i > 1)
+		{
+			cnt = phi(mapPrimes, i);
 
-//	th.exec(mainFunc, 2, 10000000, std::ref(min), std::ref(res));
+			std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_DATA));
+				res += cnt;
+		}
+
+		if (iterNo % 10000 == 0)
+		{
+			std::lock_guard<std::mutex> lockConsole(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
+				std::cout << " -- th[" << id << "] says : d = " << std::setw(4) << std::right << d << std::endl;
+		}
+
+		return;
+	};
+
+	// ---------------------------------------------------------------------
+
+	th.exec(mainFunc, N, 1, std::ref(res));
 
 	std::cout << "\n res = " << res << std::endl;
 
@@ -4487,13 +4579,156 @@ void func71()
 }
 
 // -----------------------------------------------------------------------------------------------
+
+void func73()
+{
+	size_t res = 0, answer = 7295372;
+	const size_t N = 12000;
+	double oneSecond = 1.0 / 2.0;
+
+	for (size_t d = N; d > 0; d--)
+	{
+		for (size_t n = 1 * d / 3 + 1; n < d; n++)
+		{
+			double fraction = double(n) / d;
+
+			if (fraction >= oneSecond)
+				break;
+
+			if (GCD_Stein(d, n) == 1)
+				res++;
+		}
+	}
+
+	std::cout << "\n res = " << res << std::endl;
+
+	validateResult(answer, res);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+void func74()
+{
+	myThreadLoop th(10);
+
+	size_t res = 0, answer = 402;
+
+	auto getNextFactorial = [](size_t n)
+	{
+		size_t res = 0;
+		std::vector<int> vec;
+
+		split(vec, n);
+
+		for (auto i : vec)
+			res += getFactorial(i);
+
+		return res;
+	};
+
+	auto mainFunc = [&](size_t i, size_t id, size_t &res)
+	{
+		std::set<size_t> set;
+
+		while (!set.count(i))
+		{
+			set.insert(i);
+			i = getNextFactorial(i);
+		}
+
+		if (set.size() == 60u)
+		{
+			{
+				std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_DATA));
+					res++;
+			}
+
+			{
+				std::lock_guard<std::mutex> lockConsole(th.getMutex(myThreadLoop::MUTEX_DATA));
+					std::cout << " -- th[" << id << "] says : i = " << i << "; res = " << res << std::endl;
+			}
+		}
+	};
+
+	// ---------------------------------------------------------------------
+
+	th.exec(mainFunc, 1, 1000000, std::ref(res));
+
+	std::cout << "\n res = " << res << std::endl;
+
+	validateResult(answer, res);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+void func75()
+{
+/*
+	myThreadLoop th(10);
+
+	size_t res = 0, answer = 402;
+
+	auto getNextFactorial = [](size_t n)
+	{
+		size_t res = 0;
+		std::vector<int> vec;
+
+		split(vec, n);
+
+		for (auto i : vec)
+			res += getFactorial(i);
+
+		return res;
+	};
+
+	auto mainFunc = [&](size_t i, size_t id, size_t& res)
+	{
+		std::set<size_t> set;
+
+		while (!set.count(i))
+		{
+			set.insert(i);
+			i = getNextFactorial(i);
+		}
+
+		if (set.size() == 60u)
+		{
+			{
+				std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_DATA));
+				res++;
+			}
+
+			{
+				std::lock_guard<std::mutex> lockConsole(th.getMutex(myThreadLoop::MUTEX_DATA));
+				std::cout << " -- th[" << id << "] says : i = " << i << "; res = " << res << std::endl;
+			}
+		}
+	};
+
+	// ---------------------------------------------------------------------
+
+	th.exec(mainFunc, 1, 1000000, std::ref(res));
+
+	std::cout << "\n res = " << res << std::endl;
+
+	validateResult(answer, res);
+*/
+}
+
+// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 
 void func00()
 {
-	func71();
+	func75();
 }
 
 // -----------------------------------------------------------------------------------------------

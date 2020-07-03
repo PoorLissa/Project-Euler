@@ -81,6 +81,7 @@ class myThreadLoop {
 			for (size_t id = 0; id < _threadsNum; id++)
 			{
 				vecThreads.emplace_back(
+
 					std::make_shared<std::thread> (
 
 						& myThreadLoop::threadFunc<_funcType, _ARGS...>, this, id, min, max, _func, std::forward<_ARGS>(_args)...
@@ -106,12 +107,27 @@ class myThreadLoop {
 			}
 
 			// Calling main external function in the loop
-			for (size_t i = min + id; i <= max; i += _threadsNum)
+			if(min < max)
 			{
-				if (_doStop)
-					break;
+				// From min to max
+				for (size_t i = min + id; i <= max; i += _threadsNum)
+				{
+					if (_doStop)
+						break;
 
-				boundFunc(i, id);
+					boundFunc(i, id);
+				}
+			}
+			else
+			{
+				// From max to min backwards
+				for (size_t i = min - id; i >= max && i <= min; i -= _threadsNum)
+				{
+					if (_doStop)
+						break;
+
+					boundFunc(i, id);
+				}
 			}
 
 			if (!_isSilent)
