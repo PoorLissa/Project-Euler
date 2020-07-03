@@ -17,7 +17,7 @@
 
 	Chrono timer;
 	myPrime pr;
-	myPrime::primesMap map;
+	myPrime::container map;
 
 	pr.getPrimes(map, 1, 42000000);
 	timer.end();
@@ -40,6 +40,7 @@ class myPrime {
 		void saveDataToFile		(const char *, container &, bool = true);						// Save map of primes to file
 		void readPrimesFromFile	(const char *, container &);									// Read map of files from file
 static	bool isPrime			(const size_t);													// Check if a number is prime
+		void getPrimeFactors	(size_t, container &, std::vector<size_t> &, bool = true);		// Get all prime factors of a number
 
 		template <class Type>
 static	Type getNextPrime		(Type);
@@ -293,5 +294,34 @@ long long myPrime::getPrevPrime(long long n)
 	}
 
 	return n;
+}
+// -----------------------------------------------------------------------------------------------
+
+// Get all prime factors of a number
+// skipRepeating == false: 100 => [2, 2, 5, 5]
+// skipRepeating == true : 100 => [2, 5]
+void myPrime::getPrimeFactors(size_t num, container &primesMap, std::vector<size_t> &vec, bool skipRepeating /*=true*/)
+{
+	vec.clear();
+
+	if (!primesMap.count(num))
+	{
+		for (auto iter = primesMap.begin(); iter != primesMap.end(); ++iter)
+		{
+			if (*iter > num)
+				break;
+
+			while(num % *iter == 0)
+			{
+				vec.emplace_back(*iter);
+				num = num / *iter;
+
+				if (skipRepeating)
+					break;
+			}
+		}
+	}
+
+	return;
 }
 // -----------------------------------------------------------------------------------------------

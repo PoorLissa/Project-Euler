@@ -4347,7 +4347,7 @@ void func69()
 			map.emplace(i, set);
 	};
 
-	auto mainFunc = [&](size_t i, size_t id, double& max, size_t& res)
+	auto mainFunc = [&](size_t i, size_t id, double &max, size_t &res)
 	{
 		double RES = double(i) / phi(setPrimes, map_of_sets, i);
 
@@ -4387,10 +4387,105 @@ void func69()
 
 void func70()
 {
+	myThreadLoop th(10);
 
+	myPrime pr;
+	myPrime::container map;
+	pr.getPrimes(map, 1, 10000001);
+
+	auto phi = [&pr](myPrime::container &map, size_t num) -> size_t
+	{
+		size_t res = 1;
+
+		if (num > 1)
+		{
+			if (map.count(num))
+			{
+				res = num - 1;
+			}
+			else
+			{
+				std::vector<size_t> vec;
+
+				pr.getPrimeFactors(num, map, vec);
+
+				size_t nom   = num;
+				size_t denom = 1;
+
+				for (auto n : vec)
+				{
+					nom   *= (n - 1);
+					denom *= n;
+				}
+
+				res = nom / denom;
+			}
+		}
+
+		return res;
+	};
+
+	auto mainFunc = [&](size_t i, size_t id, double &min, size_t &res)
+	{
+		size_t ph = phi(map, i);
+
+		if (isPermutation(i, ph))
+		{
+			double div = double(i) / ph;
+
+			if (div < min)
+			{
+				std::lock_guard<std::mutex> doLockData(th.getMutex(myThreadLoop::MUTEX_DATA));
+
+				if (div < min)
+				{
+					min = div;
+					res = i;
+
+					std::lock_guard<std::mutex> doLockConsole(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
+						std::cout << " -- th[" << id << "] says : i = " << i << ", min = " << min << std::endl;
+				}
+			}
+		}
+	};
+
+	// ------------------------------------------------------------------------
+
+	size_t res = 0, answer = 8319823;
+	double min = static_cast<double>(size_t(-1));
+
+	th.exec(mainFunc, 2, 10000000, std::ref(min), std::ref(res));
+
+	std::cout << "\n res = " << res << std::endl;
+
+	validateResult(answer, res);
 }
 
 // -----------------------------------------------------------------------------------------------
+
+void func71()
+{
+	myThreadLoop th(10);
+
+	myPrime pr;
+	myPrime::container map;
+	pr.getPrimes(map, 1, 10000001);
+
+	auto mainFunc = [&](size_t i, size_t id, double& min, size_t& res)
+	{
+	};
+
+	// ------------------------------------------------------------------------
+
+	size_t res = 0, answer = 8319823;
+
+//	th.exec(mainFunc, 2, 10000000, std::ref(min), std::ref(res));
+
+	std::cout << "\n res = " << res << std::endl;
+
+	validateResult(answer, res);
+}
+
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
@@ -4398,7 +4493,7 @@ void func70()
 
 void func00()
 {
-	func70();
+	func71();
 }
 
 // -----------------------------------------------------------------------------------------------

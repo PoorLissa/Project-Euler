@@ -575,3 +575,75 @@ void reverseStr(std::string &str)
 }
 
 // -----------------------------------------------------------------------------------------------
+
+// Computes the Greatest Common Divisor of two non-negative integers
+// https://en.wikipedia.org/wiki/Binary_GCD_algorithm
+// Tags: Common, Divisor, Binary, GCD
+size_t GCD_Stein(size_t a, size_t b)
+{
+	size_t shift = 0;
+
+	if (a == 0 || b == 0)
+		return a > b ? a : b;
+
+	if (a == b)
+		return a;
+
+	while (((a | b) & 1) == 0)
+	{
+		shift++;
+		a >>= 1;
+		b >>= 1;
+	}
+
+	while ((a & 1) == 0)
+		a >>= 1;
+
+	// From here on, a is always odd
+	do {
+
+		while ((b & 1) == 0)
+			b >>= 1;
+
+		// Swap u and v
+		if (a > b)
+		{
+			size_t tmp = a;
+			a = b;
+			b = tmp;
+		}
+
+		// Here b >= a
+		b -= a;
+
+	} while (b != 0);
+
+	// Restore common factors of 2
+	return a << shift;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Checks if n1 and n2 are permutations of each other
+// Tags: permutation, number, digit
+bool isPermutation(size_t n1, size_t n2)
+{
+	std::map<short, short> m1, m2;
+
+	auto dissect = [](std::map<short, short> &map, size_t num) -> void
+	{
+		while (num)
+		{
+			short digit = num % 10;
+			map[digit] = map.count(digit) ? map[digit] + 1 : 1;
+			num /= 10;
+		}
+	};
+
+	dissect(m1, n1);
+	dissect(m2, n2);
+
+	return m1 == m2;
+}
+
+// -----------------------------------------------------------------------------------------------
