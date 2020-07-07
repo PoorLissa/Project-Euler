@@ -4663,61 +4663,171 @@ void func74()
 
 void func75()
 {
-/*
 	myThreadLoop th(10);
 
-	size_t res = 0, answer = 402;
+	const size_t N = 1500000 + 1;
+	size_t res = 0, answer = 161667;
+	// ---------------------------------------------------------------------
 
-	auto getNextFactorial = [](size_t n)
+	auto isSquare = [](size_t n) -> bool
 	{
-		size_t res = 0;
-		std::vector<int> vec;
-
-		split(vec, n);
-
-		for (auto i : vec)
-			res += getFactorial(i);
-
-		return res;
+		size_t SQRT = static_cast<size_t>(sqrt(n));
+		return n == SQRT * SQRT;
 	};
 
-	auto mainFunc = [&](size_t i, size_t id, size_t& res)
+	auto getSolution = [](size_t N) -> size_t
 	{
 		std::set<size_t> set;
 
-		while (!set.count(i))
+		for (size_t a = 1; a < N/(2 + sqrt(2)); a++)
 		{
-			set.insert(i);
-			i = getNextFactorial(i);
+			size_t a2 = a * a;
+			size_t rem = N - a;
+			size_t minB = (rem * rem - a2) / (2 * rem);
+
+			for (size_t b = minB; b < minB + 1; b++)
+			{
+				size_t c  = rem - b;
+				size_t b2 = b * b;
+				size_t c2 = c * c;
+
+				if (a2 + b2 == c2)
+				{
+					set.insert(c);
+
+					if (set.size() > 1)
+						return 0;
+
+					continue;
+				}
+
+				if (a2 + b2 > c2)
+					break;
+			}
 		}
 
-		if (set.size() == 60u)
-		{
-			{
-				std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_DATA));
-				res++;
-			}
+		return set.size();
+	};
 
-			{
-				std::lock_guard<std::mutex> lockConsole(th.getMutex(myThreadLoop::MUTEX_DATA));
-				std::cout << " -- th[" << id << "] says : i = " << i << "; res = " << res << std::endl;
-			}
+	auto mainFunc = [&](size_t i, size_t id, size_t &res)
+	{
+		if (getSolution(i) == 1)
+		{
+			std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_DATA));
+				res++;
+
+				if (res % 100 == 0)
+				{
+					std::lock_guard<std::mutex> lockConsole(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
+						std::cout << " -- N = " << i << "; res = " << res << std::endl;
+				}
 		}
 	};
 
 	// ---------------------------------------------------------------------
 
-	th.exec(mainFunc, 1, 1000000, std::ref(res));
+	th.exec(mainFunc, 12, N, std::ref(res));
 
 	std::cout << "\n res = " << res << std::endl;
 
 	validateResult(answer, res);
-*/
 }
 
 // -----------------------------------------------------------------------------------------------
+
+void func76()
+{
+	const size_t N = 100;
+	size_t res = 0, sum = 0, answer = 190569291;
+
+	std::vector<size_t> VALUES;
+
+	for (size_t i = 1; i < N; i++)
+		VALUES.push_back(i);
+
+	myThreadLoop th(10, false);
+
+	auto mainFunc = [&](size_t i, size_t id, size_t &result, std::vector<size_t> &VALUES)
+	{
+		size_t res = 0;
+
+		std::vector<size_t> COEFF(N - 1, 0);
+
+		COEFF[0] = i;
+
+		countSummations(res, N, VALUES, COEFF, 1, VALUES[0] * i);
+
+		std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_DATA));
+			result += res;
+	};
+
+	th.exec(mainFunc, 0, N, std::ref(res), std::ref(VALUES));
+
+	std::cout << "  res = " << res << std::endl;
+
+	validateResult(answer, res);
+}
+
 // -----------------------------------------------------------------------------------------------
+
+void func77()
+{
+	size_t res = size_t(-1), answer = 71;
+
+	myPrime pr;
+	myPrime::container map;
+	pr.getPrimes(map, 1, 100);
+
+	std::vector<size_t> vecPrimes;
+
+	for (auto n : map)
+		vecPrimes.push_back(n);
+
+	myThreadLoop th(10);
+
+	// ------------------------------------------------------------------------
+
+	auto mainFunc = [&](size_t i, size_t &id, size_t &result, std::vector<size_t> &VALUES)
+	{
+		size_t res = 0;
+		std::vector<size_t> COEFF(VALUES.size(), 0);
+
+		countSummations(res, i, VALUES, COEFF, 0);
+
+		if (res > 5000)
+		{
+			// Stop this thread
+			th.doStop(id);
+
+			if (i < result)
+			{
+				std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_DATA));
+					if (i < result)
+						result = i;
+			}
+		}
+	};
+
+	// ------------------------------------------------------------------------
+
+	th.exec(mainFunc, 0, 10000, std::ref(res), std::ref(vecPrimes));
+
+	std::cout << "  res = " << res << std::endl;
+
+	validateResult(answer, res);
+}
+
 // -----------------------------------------------------------------------------------------------
+
+void func78()
+{
+	size_t res = 0, answer = 71;
+
+	std::cout << "  res = " << res << std::endl;
+
+	validateResult(answer, res);
+}
+
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
@@ -4728,7 +4838,7 @@ void func75()
 
 void func00()
 {
-	func75();
+	func78();
 }
 
 // -----------------------------------------------------------------------------------------------

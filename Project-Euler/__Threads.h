@@ -65,8 +65,9 @@ class myThreadLoop {
 		}
 
 		std::mutex&		getMutex		(const mutexNames name)	{ return _mutex[name];	 }
-		void			doStop			()						{ _doStop = true;		 }
-		bool			isFound			() const				{ return _doStop;		 }
+		void			doStop			()						{ _doStopAll = true;	 }			// Stop all the threads
+		void			doStop			(size_t &id)			{ id = size_t(-1);		 }			// Stop current thread. Bound function must receive id param as a reference in this case!
+		bool			isFound			() const				{ return _doStopAll;	 }
 		size_t			getActive		() const				{ return _activeThreads; }
 		size_t			getThreadsTotal	() const				{ return _threadsNum;	 }
 
@@ -75,7 +76,7 @@ class myThreadLoop {
 		{
 			std::vector<std::shared_ptr<std::thread>> vecThreads;
 
-			_doStop = false;
+			_doStopAll = false;
 			_activeThreads = _threadsNum;
 
 			for (size_t id = 0; id < _threadsNum; id++)
@@ -98,6 +99,9 @@ class myThreadLoop {
 		template <class _funcType, class ... _ARGS>
 		void threadFunc(size_t id, size_t min, size_t max, _funcType externFunc, _ARGS&&... _args)
 		{
+			// Back up the thread's id, as it may be changed by boundFunc in order to break out of the loop early
+			size_t ID = id;
+
 			auto boundFunc = std::bind(externFunc, std::placeholders::_1, std::placeholders::_2, std::forward<_ARGS>(_args)...);
 
 			if (!_isSilent)
@@ -112,10 +116,21 @@ class myThreadLoop {
 				// From min to max
 				for (size_t i = min + id; i <= max; i += _threadsNum)
 				{
-					if (_doStop)
+					if (_doStopAll)
 						break;
 
-					boundFunc(i, id);
+					boundFunc(i, ID);
+
+					if (ID == -1)
+					{
+						if (!_isSilent)
+						{
+							std::lock_guard<std::mutex> doLock(_mutex[MUTEX_CONSOLE]);
+								std::cout << " -- thread [" << id << "] is stopped from within the bound func" << std::endl;
+						}
+
+						break;
+					}
 				}
 			}
 			else
@@ -123,10 +138,21 @@ class myThreadLoop {
 				// From max to min backwards
 				for (size_t i = min - id; i >= max && i <= min; i -= _threadsNum)
 				{
-					if (_doStop)
+					if (_doStopAll)
 						break;
 
-					boundFunc(i, id);
+					boundFunc(i, ID);
+
+					if (ID == -1)
+					{
+						if (!_isSilent)
+						{
+							std::lock_guard<std::mutex> doLock(_mutex[MUTEX_CONSOLE]);
+								std::cout << " -- thread [" << id << "] is stopped from within the bound func" << std::endl;
+						}
+
+						break;
+					}
 				}
 			}
 
@@ -146,6 +172,6 @@ class myThreadLoop {
 
 		size_t		_threadsNum, _activeThreads;
 		std::mutex	_mutex[2];
-		bool		_doStop;
+		bool		_doStopAll;
 		bool		_isSilent;
 };

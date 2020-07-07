@@ -647,3 +647,56 @@ bool isPermutation(size_t n1, size_t n2)
 }
 
 // -----------------------------------------------------------------------------------------------
+
+// Returns the number of all possible ways to write N as a sum of values from VALUES
+// Tags: summation, permutation
+/*
+	1 = 1;
+	2 = 2; 2 = 1+1;
+	3 = 3; 3 = 2+1; 3 = 1+1+1;
+	4 = 4; 4 = 3+1; 4 = 2+2; 4 = 2+1+1; 4 = 1+1+1+1;
+*/
+void countSummations(size_t &res, const size_t N, std::vector<size_t> &VALUES, std::vector<size_t> &COEFF, size_t pos, size_t sum = 0)
+{
+	size_t max_Coeff_in_this_Pos = N / VALUES[pos];
+
+	// Recursively iterate through all the possible combinations of coefficients
+	for (COEFF[pos] = 0; COEFF[pos] <= max_Coeff_in_this_Pos; COEFF[pos]++)
+	{
+		size_t sumByNow = sum;
+
+		sumByNow += COEFF[pos] * VALUES[pos];
+
+		if (sumByNow <= N)
+		{
+			if (pos < VALUES.size() - 1)
+			{
+
+				// Continue recursion
+				countSummations(res, N, VALUES, COEFF, pos + 1, sumByNow);
+
+			}
+			else
+			{
+				// Break out of recursion
+				if (sumByNow == N)
+				{
+					res++;
+#if 0
+					for (size_t i = 0; i < COEFF.size(); i++)
+						std::cout << "\t" << VALUES[i] << "x" << COEFF[i] << " ";
+					std::cout << "\n" << std::endl;
+#endif
+				}
+			}
+		}
+#if 0
+		if (pos == 0)
+			std::cout << " -- lev 0 finished: " << std::setw(3) << std::right << coeff << " of " << N << std::endl;
+#endif
+	}
+
+	return;
+}
+
+// -----------------------------------------------------------------------------------------------
