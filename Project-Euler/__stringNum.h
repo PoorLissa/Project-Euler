@@ -33,6 +33,7 @@ class stringNum {
 		bool	   operator ==(const stringNum &) const;
 		bool	   operator ==(size_t);
 		stringNum& operator ++();
+		stringNum& operator --();
 
 		explicit operator bool();
 
@@ -406,6 +407,14 @@ bool stringNum::operator ==(size_t other)
 stringNum& stringNum::operator ++()
 {
 	*this = *this + stringNum(1);
+	return *this;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+stringNum& stringNum::operator --()
+{
+	*this = *this - stringNum(1);
 	return *this;
 }
 

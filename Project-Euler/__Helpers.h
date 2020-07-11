@@ -656,16 +656,23 @@ bool isPermutation(size_t n1, size_t n2)
 	3 = 3; 3 = 2+1; 3 = 1+1+1;
 	4 = 4; 4 = 3+1; 4 = 2+2; 4 = 2+1+1; 4 = 1+1+1+1;
 */
-void countSummations(size_t &res, const size_t N, std::vector<size_t> &VALUES, std::vector<size_t> &COEFF, size_t pos, size_t sum = 0)
+void countSummations(size_t &res, const size_t N, std::vector<size_t> &VALUES, std::vector<size_t> &COEFF, size_t pos, size_t sum = 0, size_t MAX = 0)
 {
-	size_t max_Coeff_in_this_Pos = N / VALUES[pos];
+	// Need this to 'reverse' VALUES vector, this will drastically decrease the number of iterations
+	size_t POS = VALUES.size() - pos - 1;
+
+	size_t max_Coeff_in_this_Pos = N / VALUES[POS];
 
 	// Recursively iterate through all the possible combinations of coefficients
-	for (COEFF[pos] = 0; COEFF[pos] <= max_Coeff_in_this_Pos; COEFF[pos]++)
+	for (COEFF[POS] = 0; COEFF[POS] <= max_Coeff_in_this_Pos; COEFF[POS]++)
 	{
-		size_t sumByNow = sum;
+		size_t sumByNow = sum + COEFF[POS] * VALUES[POS];
 
-		sumByNow += COEFF[pos] * VALUES[pos];
+		if (MAX)
+		{
+			if (VALUES[POS] > MAX && COEFF[POS] != 0)
+				continue;
+		}
 
 		if (sumByNow <= N)
 		{
@@ -673,7 +680,7 @@ void countSummations(size_t &res, const size_t N, std::vector<size_t> &VALUES, s
 			{
 
 				// Continue recursion
-				countSummations(res, N, VALUES, COEFF, pos + 1, sumByNow);
+				countSummations(res, N, VALUES, COEFF, pos + 1, sumByNow, MAX);
 
 			}
 			else
@@ -700,3 +707,186 @@ void countSummations(size_t &res, const size_t N, std::vector<size_t> &VALUES, s
 }
 
 // -----------------------------------------------------------------------------------------------
+
+size_t getPartial(size_t rem, size_t num)
+{
+	std::vector<size_t> vecValues;
+
+	for (size_t i = 1; i <= num; i++)
+		vecValues.emplace_back(i);
+
+	size_t res = 0;
+	std::vector<size_t> COEFF(vecValues.size(), 0);
+
+	countSummations(res, rem, vecValues, COEFF, 0, 0, num);
+
+	return res;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+size_t getPartial2(size_t NUM, size_t MAX_VAL, std::mutex *mtx = nullptr)
+{
+	size_t total = 0;
+
+	for (size_t i = 1; i <= MAX_VAL; i++)
+	{
+		size_t result = 0, num = NUM - i;
+
+		if (i == 1 || i == NUM)
+		{
+			result = 1;
+		}
+		else
+		{
+			if (i >= num)
+			{
+				// Real bruteforce calculation
+				result = getPartial(num, i);
+			}
+			else
+			{
+				// Meaning, get all variants for num, where all the numbers involved don't exceed i
+
+				if (mtx)
+				{
+					static std::map<std::pair<size_t, size_t>, size_t> map;
+
+					auto p = std::make_pair(num, i);
+
+					if (map.count(p))
+					{
+						result = map[p];
+					}
+					else
+					{
+						result = getPartial2(num, i, mtx);
+
+						std::lock_guard<std::mutex> lockData(*mtx);
+							map[p] = result;
+					}
+				}
+				else
+				{
+					result = getPartial2(num, i);
+				}
+			}
+		}
+
+		total += result;
+	}
+
+	return total;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+typedef std::map<std::pair<size_t, size_t>, size_t> myMap;
+
+myMap map;
+
+size_t getPartial3(size_t NUM, size_t MAX_VAL, std::mutex* mtx = nullptr, size_t level = 0)
+{
+	size_t total = 0;
+
+	auto indent = [](size_t level)
+	{
+		if (level > 0)
+			std::cout << std::endl;
+
+		for (size_t i = 0; i < level+1; i++)
+			std::cout << "  ";
+	};
+
+	auto checkCache = [](myMap &map, size_t N, size_t n) -> bool
+	{
+		auto p = std::make_pair(N, n);
+
+		if (map.count(p))
+			return true;
+
+		return false;
+	};
+
+	auto cacheIt = [](myMap& map, size_t N, size_t n, size_t res)
+	{
+		auto p = std::make_pair(N, n);
+		map[p] = res;
+	};
+
+	for (size_t i = 1; i <= MAX_VAL; i++)
+	{
+		size_t result = 0, num = NUM - i;
+
+		if (i == 1 || i == NUM)
+		{
+			result = 1;
+		}
+		else
+		{
+			if (i >= num)
+			{
+				// Real bruteforce calculation
+				indent(level);
+				std::cout << "  gp3: calling getPartial(" << num << ", " << i << ") = ";
+
+				if (checkCache(map, num, i))
+				{
+					std::cout << " --- cache hit! --- = ";
+				}
+
+				result = getPartial(num, i);
+
+				cacheIt(map, num, i, result);
+
+				std::cout << result << std::endl;
+			}
+			else
+			{
+				// Meaning, get all variants for num, where all the numbers involved don't exceed i
+
+				if (mtx)
+				{
+/*
+					static std::map<std::pair<size_t, size_t>, size_t> map;
+
+					auto p = std::make_pair(num, i);
+
+					if (map.count(p))
+					{
+						result = map[p];
+					}
+					else
+					{
+						result = getPartial3(num, i, mtx, level + 1);
+
+						std::lock_guard<std::mutex> lockData(*mtx);
+							map[p] = result;
+					}
+*/
+				}
+				else
+				{
+					indent(level);
+					std::cout << "  gp3: recursion(" << num << ", " << i << ") = ...";
+
+					if (checkCache(map, num, i))
+					{
+						std::cout << " --- cache hit! --- = ";
+					}
+
+					result = getPartial3(num, i, mtx, level + 1);
+
+					cacheIt(map, num, i, result);
+
+					indent(level);
+					std::cout << "  ... = " << result << std::endl;
+				}
+			}
+		}
+
+		total += result;
+	}
+
+	return total;
+}

@@ -4819,9 +4819,175 @@ void func77()
 
 // -----------------------------------------------------------------------------------------------
 
+namespace func78_helper {
+
+	typedef std::map<size_t, stringNum>						myMap1;
+	typedef std::map<std::pair<size_t, size_t>, stringNum>	myMap2;
+
+	stringNum* func(size_t, size_t, myMap1 &, myMap2 &, std::mutex *);
+
+	stringNum* func(size_t N, myMap1 &map_1, myMap2 &map_2, std::mutex *mtx)
+	{
+		size_t num;
+		stringNum total(0), res(0);
+
+		if (N == 0)
+		{
+			total = 1;
+		}
+		else
+		{
+			for (size_t rem = 0; rem < N; rem++)
+			{
+				stringNum* ptr = nullptr;
+				num = N - rem;
+
+				if (num == 1 || rem == 0)
+				{
+					++total;
+				}
+				else
+				{
+					if (num >= rem)
+					{
+						while (!map_1.count(rem))
+							std::this_thread::sleep_for(std::chrono::milliseconds(333));
+
+						ptr = &map_1[rem];
+					}
+					else
+					{
+						ptr = func(rem, num, map_1, map_2, mtx);
+					}
+
+					total = total + *ptr;
+				}
+			}
+		}
+
+		std::lock_guard<std::mutex> lock(*mtx);
+			map_1[N] = total;
+
+		return &map_1[N];
+	}
+
+	// Assumption: phi(7, 2) = phi(7) - phi(0) - phi(1) - phi(2) - phi(3) - phi(4, 3)
+	stringNum* func(size_t N, size_t MAX_VAL, myMap1 &map_1, myMap2 &map_2, std::mutex *mtx)
+	{
+		stringNum* res = nullptr;
+
+		auto p = std::make_pair(N, MAX_VAL);
+
+		if (map_2.count(p))
+		{
+			res = &map_2[p];
+		}
+		else
+		{
+			stringNum total = 0;
+
+			if (N - MAX_VAL == 1)
+			{
+				++total;
+			}
+			else
+			{
+				for (size_t rem = 0; rem < N - MAX_VAL; rem++)
+				{
+					size_t num = N - rem;
+
+					if (num >= rem)
+					{
+						while (!map_1.count(rem))
+							std::this_thread::sleep_for(std::chrono::milliseconds(333));
+
+						total = total + map_1[rem];
+					}
+					else
+					{
+						total = total + *func(rem, num, map_1, map_2, mtx);
+					}
+				}
+			}
+
+			std::lock_guard<std::mutex> lock(*mtx);
+				map_2[p] = map_1[N] - total;
+
+			res = &map_2[p];
+		}
+
+		return res;
+	}
+};
+
 void func78()
 {
-	size_t res = 0, answer = 71;
+	size_t res = size_t(-1), N = N = size_t(-1), answer = 499;
+
+	func78_helper::myMap1 map1;
+	func78_helper::myMap2 map2;
+
+	myThreadLoop th(1, false);
+
+	// ------------------------------------------------------------------------
+
+	size_t maxZeroes = 0;
+
+	auto mainFunc = [&](size_t i, size_t id, func78_helper::myMap1 &map1, func78_helper::myMap2 &map2, size_t &res)
+	{
+		if (th.isFound())
+			return;
+
+		std::mutex *mtxData = &th.getMutex(myThreadLoop::MUTEX_DATA);
+
+		stringNum* n = func78_helper::func(i, map1, map2, mtxData);
+
+		if (n->get().back() == '0')
+		{
+			int cnt = 0;
+
+			for (auto iter = n->get().rbegin(); iter != n->get().rend(); ++iter)
+			{
+				if (*iter != '0')
+					break;
+
+				cnt++;
+			}
+
+			if (cnt > maxZeroes)
+			{
+				std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_DATA));
+					if (cnt > maxZeroes)
+						maxZeroes = cnt;
+			}
+
+			std::lock_guard<std::mutex> lockConsole(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
+			{
+				std::cout << " -- func(" << i << ") = " << n->get() << "\t zeroes = " << cnt << " (max = " << maxZeroes << ")" << std::endl;
+
+				if (cnt > 2)
+				{
+					th.doStop();
+
+					std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_DATA));
+					{
+						res = i;
+					}
+
+					std::cout << "\n\t -- FOUND --\n" << std::endl;
+				}
+			}
+		}
+		else
+		{
+			std::lock_guard<std::mutex> lockConsole(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
+			std::cout << " -- func(" << i << ") = " << n->get() << std::endl;
+		}
+	};
+
+	// ------------------------------------------------------------------------
+
+	th.exec(mainFunc, 0, N, std::ref(map1), std::ref(map2), std::ref(res));
 
 	std::cout << "  res = " << res << std::endl;
 
