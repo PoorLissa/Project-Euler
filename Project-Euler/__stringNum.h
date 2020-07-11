@@ -17,7 +17,8 @@ class stringNum {
 
 		std::string& get() { return _str; }
 
-		stringNum  operator  +(stringNum &);
+		stringNum  operator + (stringNum &);
+		stringNum& operator +=(stringNum &);
 		stringNum  operator  +(size_t);
 		stringNum  operator  -(stringNum &);
 		stringNum  operator  -(size_t);
@@ -43,6 +44,9 @@ class stringNum {
 static	size_t _precision;
 
 	private:
+		std::unique_ptr<char[]> add(const stringNum &, const stringNum &, size_t &);
+
+	private:
 		std::string _str;
 };
 
@@ -50,51 +54,62 @@ size_t stringNum::_precision = 0;
 
 // -----------------------------------------------------------------------------------------------
 
-stringNum stringNum::operator +(stringNum& other)
+// Fast addition (10x times faster than before)
+// Returns ptr to char array and size_t & offset (which MUST be taken into account)
+std::unique_ptr<char[]> stringNum::add(const stringNum &num1, const stringNum &num2, size_t &data_len)
 {
-	std::string res, tmp,
-		* pStr1 = &_str,
-		* pStr2 = &other._str;
+	int overflow = 0;
+	const std::string* pStr1 = &num1._str,
+		* pStr2 = &num2._str;
 
-	if (_str.length() != other._str.length())
+	// Swap if needed, so the pStr1 points to the longest of the strings
+	if (pStr1->length() < pStr2->length())
 	{
-		std::string* pStr;
-		size_t len1 = _str.length(), len2 = other._str.length(), diff;
-
-		if (len1 > len2)
-		{
-			tmp = other._str;
-			pStr = pStr2 = &tmp;
-			diff = len1 - len2;
-		}
-		else
-		{
-			tmp = _str;
-			pStr = pStr1 = &tmp;
-			diff = len2 - len1;
-		}
-
-		for (size_t i = 0; i < diff; i++)
-			*pStr = '0' + *pStr;
+		const std::string* pTmp = pStr2;
+		pStr2 = pStr1;
+		pStr1 = pTmp;
 	}
 
 	size_t len = pStr1->length();
-	int overflow = 0;
+	size_t diff = len - pStr2->length();
 
-	for (size_t i = len; i > 0; i--)
+	data_len = len + 2;
+
+	// RAII 'raw' memory to hold the result
+	auto data = std::unique_ptr<char[]>(new char[data_len]);
+	data[--data_len] = '\0';
+
+	for (int i = static_cast<int>(len - 1); i >= 0; i--)
 	{
-		int num1 = int(pStr1->at(i - 1) - 48);
-		int num2 = int(pStr2->at(i - 1) - 48);
+		int num1 = int(pStr1->at(i) - 48);
+		int num2 = i >= diff ? int(pStr2->at(i - diff) - 48) : 0;
 		int nRes = num1 + num2 + overflow;
 
-		res = char(nRes % 10 + 48) + res;
+		data[--data_len] = char(nRes % 10 + 48);
 		overflow = nRes > 9 ? 1 : 0;
 	}
 
 	if (overflow)
-		res = '1' + res;
+		data[--data_len] = '1';
 
-	return stringNum(res);
+	return data;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+stringNum stringNum::operator +(stringNum &other)
+{
+	size_t offset;
+	return stringNum(add(*this, other, offset).get() + offset);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+stringNum & stringNum::operator +=(stringNum &other)
+{
+	size_t offset;
+	this->_str = (add(*this, other, offset).get() + offset);
+	return *this;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -406,7 +421,7 @@ bool stringNum::operator ==(size_t other)
 
 stringNum& stringNum::operator ++()
 {
-	*this = *this + stringNum(1);
+	*this += stringNum(1);
 	return *this;
 }
 
@@ -457,5 +472,3 @@ stringNum stringNum_Pow(size_t num, size_t pow)
 
 	return res;
 }
-
-
