@@ -4910,6 +4910,10 @@ namespace func78_helper {
 				}
 			}
 
+
+			while (!map_1.count(N))
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
 			std::lock_guard<std::mutex> lock(*mtx);
 				map_2[p] = map_1[N] - total;
 
@@ -4922,12 +4926,14 @@ namespace func78_helper {
 
 void func78()
 {
-	size_t res = size_t(-1), N = N = size_t(-1), answer = 499;
+	size_t res = size_t(-1), N = 1111, answer = 449;
 
 	func78_helper::myMap1 map1;
 	func78_helper::myMap2 map2;
 
-	myThreadLoop th(1, false);
+//	N = size_t(-1);
+
+	myThreadLoop th( 1 );
 
 	// ------------------------------------------------------------------------
 
@@ -4938,7 +4944,7 @@ void func78()
 		if (th.isFound())
 			return;
 
-		std::mutex *mtxData = &th.getMutex(myThreadLoop::MUTEX_DATA);
+		std::mutex* mtxData = &th.getMutex(myThreadLoop::MUTEX_DATA);
 
 		stringNum* n = func78_helper::func(i, map1, map2, mtxData);
 
@@ -4965,7 +4971,7 @@ void func78()
 			{
 				std::cout << " -- func(" << i << ") = " << n->get() << "\t zeroes = " << cnt << " (max = " << maxZeroes << ")" << std::endl;
 
-				if (cnt > 2)
+				if (cnt > 5)
 				{
 					th.doStop();
 
@@ -4987,7 +4993,7 @@ void func78()
 
 	// ------------------------------------------------------------------------
 
-	th.exec(mainFunc, 0, N, std::ref(map1), std::ref(map2), std::ref(res));
+	th.exec(mainFunc, 0, 1111, std::ref(map1), std::ref(map2), std::ref(res));
 
 	std::cout << "  res = " << res << std::endl;
 

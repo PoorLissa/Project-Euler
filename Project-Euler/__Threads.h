@@ -70,6 +70,11 @@ class myThreadLoop {
 		bool			isFound			() const				{ return _doStopAll;	 }
 		size_t			getActive		() const				{ return _activeThreads; }
 		size_t			getThreadsTotal	() const				{ return _threadsNum;	 }
+		void			setThreadsNo	(size_t newNumber)											// Change number of threads
+		{
+			if (!_activeThreads)
+				_threadsNum = newNumber;
+		}
 
 		template<class _funcType, class ..._ARGS>
 		void exec(_funcType _func, size_t min, size_t max, _ARGS&&... _args)
@@ -163,7 +168,7 @@ class myThreadLoop {
 			}
 
 			{
-				std::lock_guard<std::mutex> doLock(_mutex[MUTEX_DATA]);
+				std::lock_guard<std::mutex> doLock(mutexInternal);
 					_activeThreads--;
 			}
 		}
@@ -171,7 +176,7 @@ class myThreadLoop {
 	private:
 
 		size_t		_threadsNum, _activeThreads;
-		std::mutex	_mutex[2];
+		std::mutex	_mutex[2], mutexInternal;
 		bool		_doStopAll;
 		bool		_isSilent;
 };
