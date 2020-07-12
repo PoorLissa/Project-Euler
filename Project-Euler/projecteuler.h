@@ -4821,151 +4821,299 @@ void func77()
 
 namespace func78_helper {
 
-	typedef std::map<size_t,					stringNum>	myMap1;
-	typedef std::map<std::pair<size_t, size_t>, stringNum>	myMap2;
+	namespace STUPID {
 
-	stringNum* func(size_t, size_t, myMap1 &, myMap2 &, std::mutex *);
+		typedef std::map<size_t,					stringNum>	myMap1;
+		typedef std::map<std::pair<size_t, size_t>, stringNum>	myMap2;
 
-	stringNum* func(size_t N, myMap1 &map_1, myMap2 &map_2, std::mutex *mtx)
-	{
-		stringNum total(0);
+		stringNum* func(size_t, size_t, myMap1 &, myMap2 &, std::mutex *);
 
-		if (N == 0)
+		stringNum* func(size_t N, myMap1 &map_1, myMap2 &map_2, std::mutex *mtx)
 		{
-			total = 1;
-		}
-		else
-		{
-			stringNum* ptr = nullptr;
+			stringNum total(0);
 
-			for (size_t rem = 0; rem < N; rem++)
+			if (N == 0)
 			{
-				size_t num = N - rem;
+				total = 1;
+			}
+			else
+			{
+				stringNum* ptr = nullptr;
 
-				if (num == 1 || rem == 0)
+				for (size_t rem = 0; rem < N; rem++)
+				{
+					size_t num = N - rem;
+
+					if (num == 1 || rem == 0)
+					{
+						++total;
+					}
+					else
+					{
+						if (num >= rem)
+						{
+							myMap1::iterator iter = map_1.find(rem);
+
+							while (iter == map_1.end())
+							{
+								std::this_thread::sleep_for(std::chrono::milliseconds(333));
+								iter = map_1.find(rem);
+							}
+
+							ptr = &iter->second;
+						}
+						else
+						{
+							ptr = func(rem, num, map_1, map_2, mtx);
+						}
+
+						total += *ptr;
+					}
+				}
+			}
+
+			std::lock_guard<std::mutex> lock(*mtx);
+				auto iter = map_1.emplace(N, total);
+
+			return &(iter.first->second);
+		}
+
+		// Assumption: phi(7, 2) = phi(7) - phi(0) - phi(1) - phi(2) - phi(3) - phi(4, 3)
+		stringNum* func(size_t N, size_t MAX_VAL, myMap1 &map_1, myMap2 &map_2, std::mutex *mtx)
+		{
+			stringNum* res = nullptr;
+
+			auto p = std::make_pair(N, MAX_VAL);
+
+			myMap2::iterator m2iter = map_2.find(p);
+
+			if (m2iter != map_2.end())
+			{
+				res = &m2iter->second;
+			}
+			else
+			{
+				stringNum total = 0;
+
+				if (N - MAX_VAL == 1)
 				{
 					++total;
 				}
 				else
 				{
-					if (num >= rem)
+					for (size_t rem = 0; rem < N - MAX_VAL; rem++)
 					{
-						myMap1::iterator iter = map_1.find(rem);
+						size_t num = N - rem;
 
-						while (iter == map_1.end())
+						if (num >= rem)
 						{
-							std::this_thread::sleep_for(std::chrono::milliseconds(333));
-							iter = map_1.find(rem);
+							myMap1::iterator iter = map_1.find(rem);
+
+							while (iter == map_1.end())
+							{
+								std::this_thread::sleep_for(std::chrono::milliseconds(333));
+								iter = map_1.find(rem);
+							}
+
+							total += iter->second;
 						}
-
-						ptr = &iter->second;
+						else
+						{
+							total += *func(rem, num, map_1, map_2, mtx);
+						}
 					}
-					else
-					{
-						ptr = func(rem, num, map_1, map_2, mtx);
-					}
-
-					total += *ptr;
 				}
+
+				myMap1::iterator m1iter = map_1.find(N);
+
+				while (m1iter == map_1.end())
+				{
+					std::this_thread::sleep_for(std::chrono::milliseconds(100));
+					m1iter = map_1.find(N);
+				}
+
+				std::lock_guard<std::mutex> lock(*mtx);
+
+					auto iter = map_2.emplace(p, map_1[N] - total);
+
+					res = &iter.first->second;
 			}
+
+			return res;
 		}
+	};
 
-		std::lock_guard<std::mutex> lock(*mtx);
-			auto iter = map_1.emplace(N, total);
+	// ---------------------------------------------------------------------------------
 
-		return &(iter.first->second);
-	}
+	namespace SMART {
 
-	// Assumption: phi(7, 2) = phi(7) - phi(0) - phi(1) - phi(2) - phi(3) - phi(4, 3)
-	stringNum* func(size_t N, size_t MAX_VAL, myMap1 &map_1, myMap2 &map_2, std::mutex *mtx)
-	{
-		stringNum* res = nullptr;
+		const size_t myMax = 1000000;
 
-		auto p = std::make_pair(N, MAX_VAL);
+		typedef std::map<size_t, size_t>					myMap1;
+		typedef std::map<std::pair<size_t, size_t>, size_t>	myMap2;
 
-		myMap2::iterator m2iter = map_2.find(p);
+		size_t func(size_t, size_t, myMap1 &, myMap2 &);
 
-		if (m2iter != map_2.end())
+		size_t func(size_t N, myMap1 &map_1, myMap2 &map_2)
 		{
-			res = &m2iter->second;
-		}
-		else
-		{
-			stringNum total = 0;
+			size_t total = 0;
 
-			if (N - MAX_VAL == 1)
+			if (N == 0)
 			{
-				++total;
+				total = 1;
 			}
 			else
 			{
-				for (size_t rem = 0; rem < N - MAX_VAL; rem++)
+				for (size_t rem = 0; rem < N; rem++)
 				{
 					size_t num = N - rem;
 
-					if (num >= rem)
+					if (num == 1 || rem == 0)
 					{
-						myMap1::iterator iter = map_1.find(rem);
-
-						while (iter == map_1.end())
-						{
-							std::this_thread::sleep_for(std::chrono::milliseconds(333));
-							iter = map_1.find(rem);
-						}
-
-						total += iter->second;
+						total++;
 					}
 					else
 					{
-						total += *func(rem, num, map_1, map_2, mtx);
+						if (num >= rem)
+						{
+							total += map_1[rem];
+						}
+						else
+						{
+							total += func(rem, num, map_1, map_2);
+						}
 					}
 				}
 			}
 
-			myMap1::iterator m1iter = map_1.find(N);
+			if (total > myMax)
+				total = total % myMax;
 
-			while (m1iter == map_1.end())
-			{
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-				m1iter = map_1.find(N);
-			}
+			auto iter = map_1.emplace(N, total);
 
-			std::lock_guard<std::mutex> lock(*mtx);
-
-				auto iter = map_2.emplace(p, map_1[N] - total);
-
-				res = &iter.first->second;
+			return iter.first->second;
 		}
 
-		return res;
-	}
+		// Assumption: phi(7, 2) = phi(7) - phi(0) - phi(1) - phi(2) - phi(3) - phi(4, 3)
+		size_t func(size_t N, size_t MAX_VAL, myMap1 &map_1, myMap2 &map_2)
+		{
+			size_t res = 0;
+
+			// Range of N values is larger than MAX_VAL's
+			auto p = std::make_pair(N, MAX_VAL);
+
+			myMap2::iterator m2iter = map_2.find(p);
+
+			if (m2iter != map_2.end())
+			{
+				res = m2iter->second;
+			}
+			else
+			{
+				size_t total = 0;
+
+				if (N - MAX_VAL == 1)
+				{
+					total++;
+				}
+				else
+				{
+					for (size_t rem = 0; rem < N - MAX_VAL; rem++)
+					{
+						size_t num = N - rem;
+
+						if (num >= rem)
+						{
+							myMap1::iterator iter = map_1.find(rem);
+
+							total += iter->second;
+						}
+						else
+						{
+							total += func(rem, num, map_1, map_2);
+						}
+					}
+				}
+
+				if (total > myMax)
+					total = total % myMax;
+
+				total = map_1[N] - total;
+
+				auto iter = map_2.emplace(p, total);
+
+				res = iter.first->second;
+			}
+
+			return res;
+		}
+	};
+
 };
 
 void func78()
 {
-	size_t res = size_t(-1), N = 1111, answer = 449;
+	size_t res = size_t(-1), N = size_t(-1), answer = 449;
 
-	func78_helper::myMap1 map1;
-	func78_helper::myMap2 map2;
+#if 1
 
-//	N = size_t(-1);
+	func78_helper::SMART::myMap1 map1;
+	func78_helper::SMART::myMap2 map2;
 
-	myThreadLoop th( 1 );
+	size_t VAL_TO_FIND = 1000000, val_to_find = 1;
 
-	size_t VAL_TO_FIND = 5;
+	myThreadLoop th(1);
+
+	auto mainFunc = [&](size_t i, size_t &id, func78_helper::SMART::myMap1 &map1, func78_helper::SMART::myMap2 &map2, size_t& res)
+	{
+		size_t n = func78_helper::SMART::func(i, map1, map2);
+
+		if (i % 100 == 0)
+		{
+			std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
+				std::cout << " -- func(" << i << ") = " << n << std::endl;
+		}
+
+		if (n % val_to_find == 0)
+		{
+			val_to_find *= 10;
+
+			std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
+				std::cout << " -- func(" << i << ") = " << n << "\t < ---" << std::endl;
+
+			if (n % VAL_TO_FIND == 0)
+			{
+				th.doStop();
+
+				std::lock_guard<std::mutex> lockConsloe(th.getMutex(myThreadLoop::MUTEX_DATA));
+					res = i;
+
+				std::cout << "\n\t -- FOUND --\n" << std::endl;
+			}
+		}
+	};
+
+#else
+
+	func78_helper::STUPID::myMap1 map1;
+	func78_helper::STUPID::myMap2 map2;
+
+	myThreadLoop th( 2 );
+
+	size_t VAL_TO_FIND = 1;
 
 	// ------------------------------------------------------------------------
 
 	size_t maxZeroes = 0;
 
-	auto mainFunc = [&](size_t i, size_t id, func78_helper::myMap1 &map1, func78_helper::myMap2 &map2, size_t &res)
+	auto mainFunc = [&](size_t i, size_t id, func78_helper::STUPID::myMap1 &map1, func78_helper::STUPID::myMap2 &map2, size_t &res)
 	{
 		if (th.isFound())
 			return;
 
 		std::mutex* mtxData = &th.getMutex(myThreadLoop::MUTEX_DATA);
 
-		stringNum* n = func78_helper::func(i, map1, map2, mtxData);
+		stringNum* n = func78_helper::STUPID::func(i, map1, map2, mtxData);
 
 		if (n->get().back() == '0')
 		{
@@ -5010,7 +5158,9 @@ void func78()
 
 	// ------------------------------------------------------------------------
 
-	th.exec(mainFunc, 0, 1111, std::ref(map1), std::ref(map2), std::ref(res));
+#endif
+
+	th.exec(mainFunc, 0, N, std::ref(map1), std::ref(map2), std::ref(res));
 
 	std::cout << "  res = " << res << std::endl;
 

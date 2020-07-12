@@ -15,16 +15,17 @@ class stringNum {
 		stringNum(const size_t num)				: _str(std::to_string(num))	{ ; }
 		stringNum(const long long num)			: _str(std::to_string(num))	{ ; }
 
-		std::string& get() { return _str; }
+		std::string&	get		()				{ return _str;						}
+		size_t			asSizeT	()				{ return std::atoi(_str.c_str());	}
 
 		stringNum  operator + (stringNum &);
 		stringNum& operator +=(stringNum &);
-		stringNum  operator  +(size_t);
-		stringNum  operator  -(stringNum &);
-		stringNum  operator  -(size_t);
-		stringNum  operator  *(stringNum &);
-		stringNum  operator  *(size_t);
-		stringNum  operator  /(stringNum &);
+		stringNum  operator + (size_t);
+		stringNum  operator - (stringNum &);
+		stringNum  operator - (size_t);
+		stringNum  operator * (stringNum &);
+		stringNum  operator * (size_t);
+		stringNum  operator / (stringNum &);
 		bool	   operator > (stringNum &);
 		bool	   operator >=(stringNum &);
 		bool	   operator > (size_t);
@@ -37,8 +38,6 @@ class stringNum {
 		stringNum& operator --();
 
 		explicit operator bool();
-
-		size_t asSizeT() { return std::atoi(_str.c_str()); }
 
 	public:
 static	size_t _precision;
@@ -55,7 +54,7 @@ size_t stringNum::_precision = 0;
 // -----------------------------------------------------------------------------------------------
 
 // Fast addition (10x times faster than before)
-// Returns ptr to char array and size_t & offset (which MUST be taken into account)
+// Returns unique_ptr to char array and size_t & offset (which MUST be taken into account)
 std::unique_ptr<char[]> stringNum::add(const stringNum &num1, const stringNum &num2, size_t &data_len)
 {
 	int overflow = 0;
@@ -70,8 +69,7 @@ std::unique_ptr<char[]> stringNum::add(const stringNum &num1, const stringNum &n
 		pStr1 = pTmp;
 	}
 
-	size_t len = pStr1->length();
-	size_t diff = len - pStr2->length();
+	size_t len(pStr1->length()), dif(len - pStr2->length());
 
 	data_len = len + 2;
 
@@ -82,7 +80,7 @@ std::unique_ptr<char[]> stringNum::add(const stringNum &num1, const stringNum &n
 	for (int i = static_cast<int>(len - 1); i >= 0; i--)
 	{
 		int num1 = int(pStr1->at(i) - 48);
-		int num2 = i >= diff ? int(pStr2->at(i - diff) - 48) : 0;
+		int num2 = i >= dif ? int(pStr2->at(i - dif) - 48) : 0;
 		int nRes = num1 + num2 + overflow;
 
 		data[--data_len] = char(nRes % 10 + 48);
