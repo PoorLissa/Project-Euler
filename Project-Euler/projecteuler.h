@@ -4950,7 +4950,7 @@ namespace func78_helper {
 		const size_t myMax = 1000000;
 
 		typedef std::map<size_t, size_t>					myMap1;
-		typedef std::map<std::pair<size_t, size_t>, size_t>	myMap2;
+		typedef std::map<size_t, std::map<size_t, size_t>>	myMap2;
 
 		size_t func(size_t, size_t, myMap1 &, myMap2 &);
 
@@ -4997,55 +4997,63 @@ namespace func78_helper {
 		// Assumption: phi(7, 2) = phi(7) - phi(0) - phi(1) - phi(2) - phi(3) - phi(4, 3)
 		size_t func(size_t N, size_t MAX_VAL, myMap1 &map_1, myMap2 &map_2)
 		{
-			size_t res = 0;
-
 			// Range of N values is larger than MAX_VAL's
-			auto p = std::make_pair(N, MAX_VAL);
-
-			myMap2::iterator m2iter = map_2.find(p);
+			myMap2::iterator m2iter = map_2.find(N);
 
 			if (m2iter != map_2.end())
 			{
-				res = m2iter->second;
+				auto m2iter2 = m2iter->second.find(MAX_VAL);
+
+				if (m2iter2 != m2iter->second.end())
+				{
+					return m2iter2->second;
+				}
+			}
+
+			// If not found in cache
+			size_t total = 0;
+
+			if (N - MAX_VAL == 1)
+			{
+				total++;
 			}
 			else
 			{
-				size_t total = 0;
+				for (size_t rem = 0; rem < N - MAX_VAL; rem++)
+				{
+					size_t num = N - rem;
 
-				if (N - MAX_VAL == 1)
-				{
-					total++;
-				}
-				else
-				{
-					for (size_t rem = 0; rem < N - MAX_VAL; rem++)
+					if (num >= rem)
 					{
-						size_t num = N - rem;
+						myMap1::iterator iter = map_1.find(rem);
 
-						if (num >= rem)
-						{
-							myMap1::iterator iter = map_1.find(rem);
-
-							total += iter->second;
-						}
-						else
-						{
-							total += func(rem, num, map_1, map_2);
-						}
+						total += iter->second;
+					}
+					else
+					{
+						total += func(rem, num, map_1, map_2);
 					}
 				}
-
-				if (total > myMax)
-					total = total % myMax;
-
-				total = map_1[N] - total;
-
-				auto iter = map_2.emplace(p, total);
-
-				res = iter.first->second;
 			}
 
-			return res;
+			if (total > myMax)
+				total = total % myMax;
+
+			total = map_1[N] - total;
+
+			// Inner map already exists
+			if (m2iter != map_2.end())
+			{
+				m2iter->second.emplace(MAX_VAL, total);
+			}
+			else
+			{
+				std::map<size_t, size_t> m;
+				auto iter = map_2.emplace(N, m);
+				iter.first->second.emplace(MAX_VAL, total);
+			}
+
+			return total;
 		}
 	};
 
