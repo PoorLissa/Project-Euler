@@ -648,6 +648,109 @@ bool isPermutation(size_t n1, size_t n2)
 
 // -----------------------------------------------------------------------------------------------
 
+// Saves std::map<size_t, size_t> to file
+void saveDataToFile_001(const char* fileName, std::map<size_t, size_t> &map, bool overwrite = true, bool isSilent = true)
+{
+	std::fstream f;
+	auto flags = overwrite ? std::fstream::out : std::fstream::out | std::fstream::app;
+	f.open(fileName, flags);
+
+	if (f.is_open())
+	{
+		if( !isSilent)
+			std::cout << "\n Writing data to file ... ";
+
+		for (auto& iter : map)
+			f << iter.first << " " << iter.second << std::endl;
+
+		f.close();
+
+		if (!isSilent)
+			std::cout << "done!\n" << std::endl;
+	}
+}
+
+// Gets std::map<size_t, size_t> from file
+void loadDataFromFile_001(const char* fileName, std::map<size_t, size_t>& map)
+{
+	std::fstream f;
+	f.open(fileName, std::fstream::in);
+
+	if (f.is_open())
+	{
+		std::string line;
+		std::vector<std::string> vec;
+
+		while (std::getline(f, line))
+		{
+			if (line.length() && line[0] != '#')
+			{
+				split(line, vec);
+
+				size_t N = std::atoi(vec[0].c_str());
+				size_t n = std::atoi(vec[1].c_str());
+
+				map.emplace(N, n);
+			}
+		}
+
+		f.close();
+	}
+}
+
+// Saves std::map<std::pair<size_t, size_t>, size_t> to file
+void saveDataToFile_002(const char* fileName, std::map<std::pair<size_t, size_t>, size_t> &map, bool overwrite = true, bool isSilent = true)
+{
+	std::fstream f;
+	auto flags = overwrite ? std::fstream::out : std::fstream::out | std::fstream::app;
+	f.open(fileName, flags);
+
+	if (f.is_open())
+	{
+		if (!isSilent)
+			std::cout << "\n Writing data to file ... ";
+
+		for (auto& iter : map)
+			f << iter.first.first << " " << iter.first.second << " " << iter.second << std::endl;
+
+		f.close();
+
+		if (!isSilent)
+			std::cout << "done!\n" << std::endl;
+	}
+}
+
+// Gets std::map<std::pair<size_t, size_t>, size_t> from file
+void loadDataFromFile_002(const char* fileName, std::map<std::pair<size_t, size_t>, size_t> &map)
+{
+	std::fstream f;
+	f.open(fileName, std::fstream::in);
+
+	if (f.is_open())
+	{
+		std::string line;
+		std::vector<std::string> vec;
+
+		while (std::getline(f, line))
+		{
+			if (line.length() && line[0] != '#')
+			{
+				split(line, vec);
+
+				size_t p1 = std::atoi(vec[0].c_str());
+				size_t p2 = std::atoi(vec[1].c_str());
+				size_t n  = std::atoi(vec[2].c_str());
+
+				map.emplace(std::make_pair(p1, p2), n);
+			}
+		}
+
+		f.close();
+	}
+}
+
+// -----------------------------------------------------------------------------------------------
+
 // Returns the number of all possible ways to write N as a sum of values from VALUES
 // Tags: summation, permutation
 /*

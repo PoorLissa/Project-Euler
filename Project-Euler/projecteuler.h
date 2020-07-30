@@ -5,6 +5,7 @@
 #include <list>
 #include <string>
 #include <map>
+#include <unordered_map>
 #include <set>
 #include <queue>
 #include <fstream>
@@ -4947,14 +4948,15 @@ namespace func78_helper {
 
 	namespace SMART {
 
-		const size_t myMax = 1000000;
+		const size_t myMax = 100000000;
 
-		typedef std::map<size_t, size_t>					myMap1;
-		typedef std::map<size_t, std::map<size_t, size_t>>	myMap2;
+		typedef size_t											numType;
+		typedef std::map<numType, numType>						myMap1;
+		typedef std::map<std::pair<numType, numType>, numType>	myMap2;
 
-		size_t func(size_t, size_t, myMap1 &, myMap2 &);
+		size_t func(size_t, size_t, myMap1 &, myMap2 &, std::mutex *, std::mutex *);
 
-		size_t func(size_t N, myMap1 &map_1, myMap2 &map_2)
+		size_t func(size_t N, myMap1 &map_1, myMap2 &map_2, std::mutex* mtx1, std::mutex* mtx2)
 		{
 			size_t total = 0;
 
@@ -4976,84 +4978,133 @@ namespace func78_helper {
 					{
 						if (num >= rem)
 						{
-							total += map_1[rem];
+							myMap1::iterator iter;
+
+							{
+								//std::lock_guard<std::mutex> lock(*mtx1);
+									iter = map_1.find(rem);
+							}
+
+							while (iter == map_1.end())
+							{
+								std::this_thread::sleep_for(std::chrono::milliseconds(33));
+
+								//std::lock_guard<std::mutex> lock(*mtx1);
+									iter = map_1.find(rem);
+							}
+
+							total += iter->second;
 						}
 						else
 						{
-							total += func(rem, num, map_1, map_2);
+							total += func(rem, num, map_1, map_2, mtx1, mtx2);
 						}
 					}
+
+					if (total >= myMax)
+						total = total % myMax;
 				}
 			}
 
-			if (total > myMax)
+			if (total >= myMax)
 				total = total % myMax;
 
-			auto iter = map_1.emplace(N, total);
-
-			return iter.first->second;
-		}
-
-		// Assumption: phi(7, 2) = phi(7) - phi(0) - phi(1) - phi(2) - phi(3) - phi(4, 3)
-		size_t func(size_t N, size_t MAX_VAL, myMap1 &map_1, myMap2 &map_2)
-		{
-			// Range of N values is larger than MAX_VAL's
-			myMap2::iterator m2iter = map_2.find(N);
-
-			if (m2iter != map_2.end())
 			{
-				auto m2iter2 = m2iter->second.find(MAX_VAL);
-
-				if (m2iter2 != m2iter->second.end())
-				{
-					return m2iter2->second;
-				}
-			}
-
-			// If not found in cache
-			size_t total = 0;
-
-			if (N - MAX_VAL == 1)
-			{
-				total++;
-			}
-			else
-			{
-				for (size_t rem = 0; rem < N - MAX_VAL; rem++)
-				{
-					size_t num = N - rem;
-
-					if (num >= rem)
-					{
-						myMap1::iterator iter = map_1.find(rem);
-
-						total += iter->second;
-					}
-					else
-					{
-						total += func(rem, num, map_1, map_2);
-					}
-				}
-			}
-
-			if (total > myMax)
-				total = total % myMax;
-
-			total = map_1[N] - total;
-
-			// Inner map already exists
-			if (m2iter != map_2.end())
-			{
-				m2iter->second.emplace(MAX_VAL, total);
-			}
-			else
-			{
-				std::map<size_t, size_t> m;
-				auto iter = map_2.emplace(N, m);
-				iter.first->second.emplace(MAX_VAL, total);
+				std::lock_guard<std::mutex> lock(*mtx1);
+					map_1.emplace(N, total);
 			}
 
 			return total;
+		}
+
+		// Assumption: phi(7, 2) = phi(7) - phi(0) - phi(1) - phi(2) - phi(3) - phi(4, 3)
+		size_t func(size_t N, size_t MAX_VAL, myMap1 &map_1, myMap2 &map_2, std::mutex *mtx1, std::mutex *mtx2)
+		{
+			size_t res = 0;
+
+			// Range of N values is larger than MAX_VAL's
+			auto p = std::make_pair(N, MAX_VAL);
+
+			myMap2::iterator m2iter;
+			
+			{
+				//std::lock_guard<std::mutex> lock(*mtx2);
+					m2iter = map_2.find(p);
+			}
+
+			if (m2iter != map_2.end())
+			{
+				return m2iter->second;
+			}
+			else
+			{
+				size_t total = 0;
+
+				if (N - MAX_VAL == 1)
+				{
+					total++;
+				}
+				else
+				{
+					for (size_t rem = 0; rem < N - MAX_VAL; rem++)
+					{
+						size_t num = N - rem;
+
+						if (num >= rem)
+						{
+							myMap1::iterator iter;
+							
+							{
+								//std::lock_guard<std::mutex> lock(*mtx1);
+									iter = map_1.find(rem);
+							}
+
+							while (iter == map_1.end())
+							{
+								std::this_thread::sleep_for(std::chrono::milliseconds(66));
+
+								//std::lock_guard<std::mutex> lock(*mtx1);
+									iter = map_1.find(rem);
+							}
+
+							total += iter->second;
+						}
+						else
+						{
+							total += func(rem, num, map_1, map_2, mtx1, mtx2);
+						}
+					}
+				}
+
+				if (total >= myMax)
+					total = total % myMax;
+
+				// Wait until N can be found in the map
+				myMap1::iterator iter;
+				{
+					//std::lock_guard<std::mutex> lock(*mtx1);
+						iter = map_1.find(N);
+				}
+
+				while (iter == map_1.end())
+				{
+					std::this_thread::sleep_for(std::chrono::milliseconds(99));
+
+					//std::lock_guard<std::mutex> lock(*mtx1);
+						iter = map_1.find(N);
+				}
+
+				total = (iter->second > total) ? iter->second - total : myMax + iter->second - total;
+
+				{
+					std::lock_guard<std::mutex> lock(*mtx2);
+						map_2.emplace(p, total);
+				}
+
+				return total;
+			}
+
+			return 0;
 		}
 	};
 
@@ -5063,20 +5114,33 @@ void func78()
 {
 	size_t res = size_t(-1), N = size_t(-1), answer = 449;
 
+	N = 34750;
+
+	size_t numThreads = 6;
+
 #if 1
 
 	func78_helper::SMART::myMap1 map1;
 	func78_helper::SMART::myMap2 map2;
 
+	std::cout << " -- loading data ... ";
+
+	loadDataFromFile_001("___func78_map1.txt", map1);
+	loadDataFromFile_002("___func78_map2.txt", map2);
+
+	std::cout << " done --" << std::endl;;
+
 	size_t VAL_TO_FIND = 1000000, val_to_find = 1;
 
-	myThreadLoop th(1);
+	myThreadLoop th(numThreads);
+
+	std::mutex mtx1, mtx2;
 
 	auto mainFunc = [&](size_t i, size_t &id, func78_helper::SMART::myMap1 &map1, func78_helper::SMART::myMap2 &map2, size_t& res)
 	{
-		size_t n = func78_helper::SMART::func(i, map1, map2);
+		size_t n = func78_helper::SMART::func(i, map1, map2, &mtx1, &mtx2);
 
-		if (i % 100 == 0)
+		if ( (i <= 10000 && i % 100 == 0) || (i > 10000 && i % 10 == 0) || (i > 28000))
 		{
 			std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
 				std::cout << " -- func(" << i << ") = " << n << std::endl;
@@ -5089,7 +5153,7 @@ void func78()
 			std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
 				std::cout << " -- func(" << i << ") = " << n << "\t < ---" << std::endl;
 
-			if (n % VAL_TO_FIND == 0)
+			if (!n || n % VAL_TO_FIND == 0)
 			{
 				th.doStop();
 
@@ -5106,9 +5170,9 @@ void func78()
 	func78_helper::STUPID::myMap1 map1;
 	func78_helper::STUPID::myMap2 map2;
 
-	myThreadLoop th( 2 );
+	myThreadLoop th( 1 );
 
-	size_t VAL_TO_FIND = 1;
+	size_t VAL_TO_FIND = 3;
 
 	// ------------------------------------------------------------------------
 
@@ -5169,6 +5233,13 @@ void func78()
 #endif
 
 	th.exec(mainFunc, 0, N, std::ref(map1), std::ref(map2), std::ref(res));
+
+	std::cout << " -- saving data ... ";
+
+	saveDataToFile_001("___func78_map1.txt", map1, true);
+	saveDataToFile_002("___func78_map2.txt", map2, true);
+
+	std::cout << "done --\n" << std::endl;;
 
 	std::cout << "  res = " << res << std::endl;
 
