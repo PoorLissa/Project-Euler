@@ -5089,17 +5089,20 @@ namespace func78_helper {
 
 	// ---------------------------------------------------------------------------------
 
+	// _info/Problem 78
 	namespace SUPER_SMART {
 	
 		void getCoeff_forPn(size_t n, std::vector<int> &vec)
 		{
 			vec.clear();
 
-			for (size_t m = 1; m < 1000000000; m++)
+			for (size_t m = 1; m < size_t(-1); m++)
 			{
-				int coeff1 = n - (m * (3 * m - 1) / 2);
-				int coeff2 = n - (m * (3 * m + 1) / 2);
+				int coeff1 = static_cast<int>(n - (m * (3 * m - 1) / 2));
+				int coeff2 = static_cast<int>(n - (m * (3 * m + 1) / 2));
 
+				// Need to be able to save the sign of P(0)
+				// This is why we're adding 1 here (and removing it later, when extracting the coeffs)
 				int sign = (m+1) % 2 ? -1 : 1;
 
 				if (coeff1 >= 0)
