@@ -5120,8 +5120,6 @@ void func78()
 {
 	size_t res = size_t(-1), N = size_t(-1), answer = 55374;
 
-	N = 100;
-
 	// --- SUPER SMART ---
 #if 1
 
@@ -5157,33 +5155,13 @@ void func78()
 
 		std::string& str = SUM.get();
 
-		if (str.length() > 7)
-		{
-			std::string s = str;
-
-			s = s.substr(s.length() - 7, 7);
-
-			stringNum s1;
-
-			SUM = s;
-
-			SUM = SUM - s1;
-		}
-
 		map[i] = SUM;
-
-		std::cout << " -- func(" << i << ") = " << SUM.get() << std::endl;
-
-		continue;
 
 		if (str.back() == '0')
 		{
 			if (str.length() > 6)
 			{
 				std::string s = str.substr(str.length() - 6, 6);
-
-				std::cout << " -- func(" << i << ") = " << s << std::endl;
-				std::cout << " -- func(" << i << ") = " << SUM.get() << std::endl;
 
 				if (s == "000000")
 				{
