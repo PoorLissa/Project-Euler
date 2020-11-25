@@ -649,7 +649,8 @@ bool isPermutation(size_t n1, size_t n2)
 // -----------------------------------------------------------------------------------------------
 
 // Saves std::map<size_t, size_t> to file
-void saveDataToFile_001(const char* fileName, std::map<size_t, size_t> &map, bool overwrite = true, bool isSilent = true)
+template <class T>
+void saveDataToFile_001(const char* fileName, std::map<T, T> &map, bool overwrite = true, bool isSilent = true)
 {
 	std::fstream f;
 	auto flags = overwrite ? std::fstream::out : std::fstream::out | std::fstream::app;
@@ -671,7 +672,8 @@ void saveDataToFile_001(const char* fileName, std::map<size_t, size_t> &map, boo
 }
 
 // Gets std::map<size_t, size_t> from file
-void loadDataFromFile_001(const char* fileName, std::map<size_t, size_t>& map)
+template <class T>
+void loadDataFromFile_001(const char* fileName, std::map<T, T> & map)
 {
 	std::fstream f;
 	f.open(fileName, std::fstream::in);
@@ -687,8 +689,8 @@ void loadDataFromFile_001(const char* fileName, std::map<size_t, size_t>& map)
 			{
 				split(line, vec);
 
-				size_t N = std::atoi(vec[0].c_str());
-				size_t n = std::atoi(vec[1].c_str());
+				T N = std::atoi(vec[0].c_str());
+				T n = std::atoi(vec[1].c_str());
 
 				map.emplace(N, n);
 			}
@@ -699,7 +701,8 @@ void loadDataFromFile_001(const char* fileName, std::map<size_t, size_t>& map)
 }
 
 // Saves std::map<std::pair<size_t, size_t>, size_t> to file
-void saveDataToFile_002(const char* fileName, std::map<std::pair<size_t, size_t>, size_t> &map, bool overwrite = true, bool isSilent = true)
+template <class T>
+void saveDataToFile_002(const char* fileName, std::map<std::pair<T, T>, T> &map, bool overwrite = true, bool isSilent = true)
 {
 	std::fstream f;
 	auto flags = overwrite ? std::fstream::out : std::fstream::out | std::fstream::app;
@@ -721,7 +724,8 @@ void saveDataToFile_002(const char* fileName, std::map<std::pair<size_t, size_t>
 }
 
 // Gets std::map<std::pair<size_t, size_t>, size_t> from file
-void loadDataFromFile_002(const char* fileName, std::map<std::pair<size_t, size_t>, size_t> &map)
+template <class T>
+void loadDataFromFile_002(const char* fileName, std::map<std::pair<T, T>, T> &map)
 {
 	std::fstream f;
 	f.open(fileName, std::fstream::in);
@@ -737,9 +741,9 @@ void loadDataFromFile_002(const char* fileName, std::map<std::pair<size_t, size_
 			{
 				split(line, vec);
 
-				size_t p1 = std::atoi(vec[0].c_str());
-				size_t p2 = std::atoi(vec[1].c_str());
-				size_t n  = std::atoi(vec[2].c_str());
+				T p1 = std::atoi(vec[0].c_str());
+				T p2 = std::atoi(vec[1].c_str());
+				T n  = std::atoi(vec[2].c_str());
 
 				map.emplace(std::make_pair(p1, p2), n);
 			}

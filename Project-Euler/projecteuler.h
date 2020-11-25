@@ -4950,13 +4950,13 @@ namespace func78_helper {
 
 		const size_t myMax = 100000000;
 
-		typedef size_t											numType;
+		typedef unsigned int									numType;
 		typedef std::map<numType, numType>						myMap1;
 		typedef std::map<std::pair<numType, numType>, numType>	myMap2;
 
-		size_t func(size_t, size_t, myMap1 &, myMap2 &, std::mutex *, std::mutex *);
+		size_t func(numType, numType, myMap1 &, myMap2 &, std::mutex *, std::mutex *);
 
-		size_t func(size_t N, myMap1 &map_1, myMap2 &map_2, std::mutex* mtx1, std::mutex* mtx2)
+		size_t func(numType N, myMap1 &map_1, myMap2 &map_2, std::mutex* mtx1, std::mutex* mtx2)
 		{
 			size_t total = 0;
 
@@ -4966,9 +4966,9 @@ namespace func78_helper {
 			}
 			else
 			{
-				for (size_t rem = 0; rem < N; rem++)
+				for (numType rem = 0; rem < N; rem++)
 				{
-					size_t num = N - rem;
+					numType num = N - rem;
 
 					if (num == 1 || rem == 0)
 					{
@@ -4979,18 +4979,12 @@ namespace func78_helper {
 						if (num >= rem)
 						{
 							myMap1::iterator iter;
-
-							{
-								//std::lock_guard<std::mutex> lock(*mtx1);
-									iter = map_1.find(rem);
-							}
+							iter = map_1.find(rem);
 
 							while (iter == map_1.end())
 							{
 								std::this_thread::sleep_for(std::chrono::milliseconds(33));
-
-								//std::lock_guard<std::mutex> lock(*mtx1);
-									iter = map_1.find(rem);
+								iter = map_1.find(rem);
 							}
 
 							total += iter->second;
@@ -5011,14 +5005,14 @@ namespace func78_helper {
 
 			{
 				std::lock_guard<std::mutex> lock(*mtx1);
-					map_1.emplace(N, total);
+					map_1.emplace(N, static_cast<numType>(total));
 			}
 
 			return total;
 		}
 
 		// Assumption: phi(7, 2) = phi(7) - phi(0) - phi(1) - phi(2) - phi(3) - phi(4, 3)
-		size_t func(size_t N, size_t MAX_VAL, myMap1 &map_1, myMap2 &map_2, std::mutex *mtx1, std::mutex *mtx2)
+		size_t func(numType N, numType MAX_VAL, myMap1 &map_1, myMap2 &map_2, std::mutex *mtx1, std::mutex *mtx2)
 		{
 			size_t res = 0;
 
@@ -5026,11 +5020,7 @@ namespace func78_helper {
 			auto p = std::make_pair(N, MAX_VAL);
 
 			myMap2::iterator m2iter;
-			
-			{
-				//std::lock_guard<std::mutex> lock(*mtx2);
-					m2iter = map_2.find(p);
-			}
+			m2iter = map_2.find(p);
 
 			if (m2iter != map_2.end())
 			{
@@ -5046,25 +5036,19 @@ namespace func78_helper {
 				}
 				else
 				{
-					for (size_t rem = 0; rem < N - MAX_VAL; rem++)
+					for (numType rem = 0; rem < N - MAX_VAL; rem++)
 					{
-						size_t num = N - rem;
+						numType num = N - rem;
 
 						if (num >= rem)
 						{
 							myMap1::iterator iter;
-							
-							{
-								//std::lock_guard<std::mutex> lock(*mtx1);
-									iter = map_1.find(rem);
-							}
+							iter = map_1.find(rem);
 
 							while (iter == map_1.end())
 							{
 								std::this_thread::sleep_for(std::chrono::milliseconds(66));
-
-								//std::lock_guard<std::mutex> lock(*mtx1);
-									iter = map_1.find(rem);
+								iter = map_1.find(rem);
 							}
 
 							total += iter->second;
@@ -5081,24 +5065,19 @@ namespace func78_helper {
 
 				// Wait until N can be found in the map
 				myMap1::iterator iter;
-				{
-					//std::lock_guard<std::mutex> lock(*mtx1);
-						iter = map_1.find(N);
-				}
+				iter = map_1.find(N);
 
 				while (iter == map_1.end())
 				{
 					std::this_thread::sleep_for(std::chrono::milliseconds(99));
-
-					//std::lock_guard<std::mutex> lock(*mtx1);
-						iter = map_1.find(N);
+					iter = map_1.find(N);
 				}
 
 				total = (iter->second > total) ? iter->second - total : myMax + iter->second - total;
 
 				{
 					std::lock_guard<std::mutex> lock(*mtx2);
-						map_2.emplace(p, total);
+						map_2.emplace(p, static_cast<numType>(total));
 				}
 
 				return total;
@@ -5108,27 +5087,131 @@ namespace func78_helper {
 		}
 	};
 
+	// ---------------------------------------------------------------------------------
+
+	namespace SUPER_SMART {
+	
+		void getCoeff_forPn(size_t n, std::vector<int> &vec)
+		{
+			vec.clear();
+
+			for (size_t m = 1; m < 1000000000; m++)
+			{
+				int coeff1 = n - (m * (3 * m - 1) / 2);
+				int coeff2 = n - (m * (3 * m + 1) / 2);
+
+				int sign = (m+1) % 2 ? -1 : 1;
+
+				if (coeff1 >= 0)
+					vec.push_back((coeff1+1) * sign);
+
+				if (coeff2 >= 0)
+					vec.push_back((coeff2+1) * sign);
+
+				if (coeff1 < 0 || coeff2 < 0)
+					break;
+			}
+		}
+	};
+
 };
 
 void func78()
 {
-	size_t res = size_t(-1), N = size_t(-1), answer = 449;
+	size_t res = size_t(-1), N = size_t(-1), answer = 55374;
 
-	N = 34750;
+	N = 100;
 
-	size_t numThreads = 6;
-
+	// --- SUPER SMART ---
 #if 1
+
+	std::map<size_t, stringNum>	map;
+
+	map[0] = stringNum(1);
+
+	for (size_t i = 1; i < N; i++)
+	{
+		std::vector<int> vec;
+
+		func78_helper::SUPER_SMART::getCoeff_forPn(i, vec);
+
+		stringNum SUM = 0;
+
+		for (size_t j = 0; j < vec.size(); j++)
+		{
+			int coeff = vec[j];
+
+			size_t Coeff = coeff >= 0 ? coeff : -coeff;
+
+			Coeff--;
+
+			if (coeff >= 0)
+			{
+				SUM = SUM + map[Coeff];
+			}
+			else
+			{
+				SUM = SUM - map[Coeff];
+			}
+		}
+
+		std::string& str = SUM.get();
+
+		if (str.length() > 7)
+		{
+			std::string s = str;
+
+			s = s.substr(s.length() - 7, 7);
+
+			stringNum s1;
+
+			SUM = s;
+
+			SUM = SUM - s1;
+		}
+
+		map[i] = SUM;
+
+		std::cout << " -- func(" << i << ") = " << SUM.get() << std::endl;
+
+		continue;
+
+		if (str.back() == '0')
+		{
+			if (str.length() > 6)
+			{
+				std::string s = str.substr(str.length() - 6, 6);
+
+				std::cout << " -- func(" << i << ") = " << s << std::endl;
+				std::cout << " -- func(" << i << ") = " << SUM.get() << std::endl;
+
+				if (s == "000000")
+				{
+					std::cout << " -- FOUND --- : " << SUM.get() << std::endl;
+					res = i;
+					break;
+				}
+			}
+		}
+	}
+
+#endif
+
+	// --- SMART ---
+#if 0
+
+	N = 43000;
+	size_t numThreads = 1;
 
 	func78_helper::SMART::myMap1 map1;
 	func78_helper::SMART::myMap2 map2;
 
 	std::cout << " -- loading data ... ";
 
-	loadDataFromFile_001("___func78_map1.txt", map1);
-	loadDataFromFile_002("___func78_map2.txt", map2);
+	//loadDataFromFile_001("___func78_map1.txt", map1);
+	//loadDataFromFile_002("___func78_map2.txt", map2);
 
-	std::cout << " done --" << std::endl;;
+	std::cout << " done --" << std::endl;
 
 	size_t VAL_TO_FIND = 1000000, val_to_find = 1;
 
@@ -5138,7 +5221,9 @@ void func78()
 
 	auto mainFunc = [&](size_t i, size_t &id, func78_helper::SMART::myMap1 &map1, func78_helper::SMART::myMap2 &map2, size_t& res)
 	{
-		size_t n = func78_helper::SMART::func(i, map1, map2, &mtx1, &mtx2);
+		func78_helper::SMART::numType ii = static_cast<func78_helper::SMART::numType>(i);
+
+		size_t n = func78_helper::SMART::func(ii, map1, map2, &mtx1, &mtx2);
 
 		if ( (i <= 10000 && i % 100 == 0) || (i > 10000 && i % 10 == 0) || (i > 28000))
 		{
@@ -5165,7 +5250,19 @@ void func78()
 		}
 	};
 
-#else
+	th.exec(mainFunc, 0, N, std::ref(map1), std::ref(map2), std::ref(res));
+
+	std::cout << " -- saving data ... ";
+
+	//saveDataToFile_001("___func78_map1.txt", map1, true);
+	//saveDataToFile_002("___func78_map2.txt", map2, true);
+
+	std::cout << "done --\n" << std::endl;;
+
+#endif
+
+	// --- STUPID ---
+#if 0
 
 	func78_helper::STUPID::myMap1 map1;
 	func78_helper::STUPID::myMap2 map2;
@@ -5231,15 +5328,6 @@ void func78()
 	// ------------------------------------------------------------------------
 
 #endif
-
-	th.exec(mainFunc, 0, N, std::ref(map1), std::ref(map2), std::ref(res));
-
-	std::cout << " -- saving data ... ";
-
-	saveDataToFile_001("___func78_map1.txt", map1, true);
-	saveDataToFile_002("___func78_map2.txt", map2, true);
-
-	std::cout << "done --\n" << std::endl;;
 
 	std::cout << "  res = " << res << std::endl;
 

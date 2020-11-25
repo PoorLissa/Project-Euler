@@ -1,0 +1,5 @@
+
+	p(0) = 1
+
+	In this formula, m increases from 1 to infinity,
+	until it starts producing negative values for subsequent p(n)
