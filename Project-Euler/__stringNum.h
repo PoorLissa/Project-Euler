@@ -26,24 +26,27 @@ class stringNum {
 		stringNum  operator * (stringNum &);
 		stringNum  operator * (size_t);
 		stringNum  operator / (stringNum &);
-		bool	   operator > (stringNum &);
-		bool	   operator >=(stringNum &);
-		bool	   operator > (size_t);
-		bool	   operator < (stringNum &);
-		bool	   operator <=(stringNum &);
-		bool	   operator < (size_t);
-		bool	   operator ==(const stringNum &) const;
+		bool	   operator > (stringNum &)			const;
+		bool	   operator >=(stringNum &)			const;
+		bool	   operator > (size_t)				const;
+		bool	   operator < (stringNum &)			const;
+		bool	   operator <=(stringNum &)			const;
+		bool	   operator < (size_t)				const;
+		bool	   operator ==(const stringNum &)	const;
 		bool	   operator ==(size_t);
 		stringNum& operator ++();
 		stringNum& operator --();
 
-		explicit operator bool();
+		explicit operator bool()					const;
 
 	public:
 static	size_t _precision;
 
 	private:
 		std::unique_ptr<char[]> add(const stringNum &, const stringNum &, size_t &);
+
+		void mult_General	(const stringNum&, const stringNum&, stringNum&) const;
+		void mult_Karatsuba	(stringNum&, stringNum&, stringNum& res, size_t minVal = 10) const;
 
 	private:
 		std::string _str;
@@ -210,7 +213,7 @@ stringNum stringNum::operator -(size_t other)
 
 // -----------------------------------------------------------------------------------------------
 
-bool stringNum::operator >(stringNum &other)
+bool stringNum::operator >(stringNum &other) const
 {
 	if (_str.length() > other._str.length())
 		return true;
@@ -223,28 +226,28 @@ bool stringNum::operator >(stringNum &other)
 
 // -----------------------------------------------------------------------------------------------
 
-bool stringNum::operator >=(stringNum& other)
+bool stringNum::operator >=(stringNum& other) const
 {
 	return (*this > other) || (*this == other);
 }
 
 // -----------------------------------------------------------------------------------------------
 
-bool stringNum::operator >(size_t other)
+bool stringNum::operator >(size_t other) const
 {
 	return *this > stringNum(other);
 }
 
 // -----------------------------------------------------------------------------------------------
 
-bool stringNum::operator <=(stringNum& other)
+bool stringNum::operator <=(stringNum& other) const
 {
 	return (*this < other) || (*this == other);
 }
 
 // -----------------------------------------------------------------------------------------------
 
-bool stringNum::operator <(stringNum& other)
+bool stringNum::operator <(stringNum& other) const
 {
 	if (_str.length() != other._str.length())
 		return _str.length() < other._str.length();
@@ -254,22 +257,45 @@ bool stringNum::operator <(stringNum& other)
 
 // -----------------------------------------------------------------------------------------------
 
-bool stringNum::operator <(size_t other)
+bool stringNum::operator <(size_t other) const
 {
 	return *this < stringNum(other);
 }
 
 // -----------------------------------------------------------------------------------------------
 
-stringNum stringNum::operator *(stringNum &other)
+stringNum stringNum::operator *(stringNum& other)
 {
-	int cnt = 0, overflow = 0;
 	stringNum res;
 
-	if (*this && other)
+	size_t len1 = this->get().length();
+	size_t len2 = other.get().length();
+
+	if (len1 > 300u && len2 > 300u)
 	{
-		std::string* s1 = &_str;
-		std::string* s2 = &other._str;
+		// Need more experimenting
+		// Seems that Karatsuba doesn't work really well if the diff in length of numbers is more than 20-25%
+		mult_Karatsuba(*this, other, res, 1000000);
+	}
+	else
+	{
+		mult_General(*this, other, res);
+	}
+
+	return res;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// General multiplication algorithm
+void stringNum::mult_General(const stringNum &n1, const stringNum &n2, stringNum &res) const
+{
+	int cnt = 0, carryOver = 0;
+
+	if (n1 && n2)
+	{
+		const std::string* s1 = &n1._str;
+		const std::string* s2 = &n2._str;
 
 		for (auto iter2 = s2->rbegin(); iter2 != s2->rend(); ++iter2)
 		{
@@ -278,25 +304,25 @@ stringNum stringNum::operator *(stringNum &other)
 
 			for (auto iter1 = s1->rbegin(); iter1 != s1->rend(); ++iter1)
 			{
-				int i1 = i2 * (*iter1 - 48) + overflow;
+				int i1 = i2 * (*iter1 - 48) + carryOver;
 
 				if (i1 > 9)
 				{
-					overflow = i1 / 10;
+					carryOver  = i1 / 10;
 					i1 = i1 % 10;
 				}
 				else
 				{
-					overflow = 0;
+					carryOver = 0;
 				}
 
 				str = char(i1 + 48) + str;
 			}
 
-			if (overflow)
+			if (carryOver)
 			{
-				str = char(overflow + 48) + str;
-				overflow = 0;
+				str = char(carryOver + 48) + str;
+				carryOver = 0;
 			}
 
 			if (cnt)
@@ -314,15 +340,60 @@ stringNum stringNum::operator *(stringNum &other)
 			cnt++;
 		}
 	}
+}
 
-	return res;
+// -----------------------------------------------------------------------------------------------
+
+// Karatsuba fast multiplication
+// Works faster with operands of 100+ digits length
+// https://en.wikipedia.org/wiki/Karatsuba_algorithm
+// minVal adjusts the value for which the conventional multiplication will be is used
+void stringNum::mult_Karatsuba(stringNum& n1, stringNum& n2, stringNum& res, size_t minVal) const
+{
+	if (n1 < minVal || n2 < minVal)
+	{
+		mult_General(n1, n2, res);
+		return;
+	}
+
+	size_t m1 = n1.get().length();
+	size_t m2 = n2.get().length();
+
+	// Get min of the two
+	size_t m = m1 > m2 ? m2 : m1;
+
+	m = m / 2;
+
+	stringNum low1 = n1.get().substr(n1.get().length() - m);
+	stringNum hig1 = n1.get().substr(0, n1.get().length() - m);
+
+	stringNum low2 = n2.get().substr(n2.get().length() - m);
+	stringNum hig2 = n2.get().substr(0, n2.get().length() - m);
+
+	stringNum z0, z1, z2;
+
+	mult_Karatsuba(low1, low2, z0, minVal);
+	mult_Karatsuba(low1 + hig1, low2 + hig2, z1, minVal);
+	mult_Karatsuba(hig1, hig2, z2, minVal);
+
+	z1 = z1 - (z2 + z0);
+
+	//	return (z2 * 10 ^ (m * 2)) + ((z1 - z2 - z0) * 10 ^ m2) + z0;
+
+	for (size_t i = 0; i < m; i++)
+	{
+		z2.get() += "00";
+		z1.get() += "0";
+	}
+
+	res = z2 + z1 + z0;
 }
 
 // -----------------------------------------------------------------------------------------------
 
 stringNum stringNum::operator *(size_t other)
 {
-	return *this * stringNum(other);
+	return (*this) * stringNum(other);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -433,7 +504,7 @@ stringNum& stringNum::operator --()
 
 // -----------------------------------------------------------------------------------------------
 
-stringNum::operator bool()
+stringNum::operator bool() const
 {
 	return _str != "0";
 }
@@ -442,7 +513,9 @@ stringNum::operator bool()
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 
-// Special pow function with overflow handling
+// Special pow function with overflow handling:
+// 1. Calculate the power using native num types, until we've reached the point where overflow occurs (fast part)
+// 2. Proceed calculating the power using our type (slow part)
 stringNum stringNum_Pow(size_t num, size_t pow)
 {
 	size_t i = 0;
@@ -470,3 +543,152 @@ stringNum stringNum_Pow(size_t num, size_t pow)
 
 	return res;
 }
+
+// -----------------------------------------------------------------------------------------------
+
+// Recursive pow function. Faster than stringNum_Pow().
+stringNum stringNum_Pow_Recursive(size_t num, size_t pow)
+{
+	if (pow == 0)
+		return stringNum(1);
+
+	if (pow % 2 != 0)
+		return stringNum_Pow_Recursive(num, pow-1) * num;
+
+	stringNum tmp = stringNum_Pow_Recursive(num, pow/2);
+
+	return tmp * tmp;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+class longNum {
+
+	typedef int digitType;
+
+	public:
+
+		longNum() : _values(nullptr), _length(0)
+		{
+		}
+
+		longNum(const char *str)
+		{
+			_length = strlen(str);
+
+			_values = new digitType[_length];
+
+			for (size_t i = 0; i < _length; i++)
+			{
+				_values[_length - i - 1] = (str[i] - 48);
+			}
+		}
+
+		longNum(longNum&& other) noexcept
+		{
+			this->_length = std::move(other._length);
+			this->_values = std::move(other._values);
+
+			other._length = 0;
+			other._values = nullptr;
+		}
+
+		~longNum()
+		{
+			if (_values)
+			{
+				delete[] _values;
+				_values = nullptr;
+				_length = 0;
+			}
+		}
+
+		// Return number as a string in normal order
+		std::string get()
+		{
+			std::string str;
+			str.reserve(_length);
+
+			for (size_t i = 0; i < _length; i++)
+				str += static_cast<char>(_values[_length - i - 1] + 48);
+
+			return str;
+		}
+
+		longNum operator +(const longNum &other)
+		{
+			const longNum* p1, * p2;
+			longNum res;
+
+			if (_length > other._length)
+			{
+				p1 = this;
+				p2 = &other;
+			}
+			else
+			{
+				p1 = &other;
+				p2 = this;
+			}
+			
+			res._length = p1->_length;
+			res._values = new digitType[p1->_length + 1];
+			res._values[p1->_length] = 0;
+
+			for (size_t i = 0; i < res._length; i++)
+				res._values[i] = p1->_values[i] + (i < p2->_length ? p2->_values[i] : 0);
+
+			res.normalize();
+
+			return std::move(res);
+		}
+
+		longNum& longNum::operator =(longNum&& other) noexcept
+		{
+			if (this != &other)
+			{
+				if (_values)
+					delete[] _values;
+
+				this->_length = std::move(other._length);
+				this->_values = std::move(other._values);
+
+				other._length = 0;
+				other._values = nullptr;
+			}
+
+			return *this;
+		}
+
+		void normalize()
+		{
+			for (size_t i = 0; i < _length; i++)
+			{
+				digitType nnn = _values[i];
+
+				if (_values[i] >= 10)
+				{
+					digitType carryOver = _values[i] / 10;
+
+					_values[i + 1] += carryOver;
+					_values[  i  ] -= carryOver * 10;
+
+					if (i + 1 >= _length)
+						_length++;
+				}
+			}
+		}
+
+	private:
+
+		digitType*	_values;
+		size_t		_length;
+};
+
+

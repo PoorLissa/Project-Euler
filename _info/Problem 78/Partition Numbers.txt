@@ -1,4 +1,6 @@
 
+	https://en.wikipedia.org/wiki/Partition_(number_theory)
+
 	p(0) = 1
 
 	In this formula, m increases from 1 to infinity,

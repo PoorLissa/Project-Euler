@@ -2879,7 +2879,7 @@ void func56()
 	{
 		for (size_t j = 1; j < 101; j++)
 		{
-			stringNum n = stringNum_Pow(i, j);
+			stringNum n = stringNum_Pow_Recursive(i, j);
 
 			size_t sum = getDigitalSum(n);
 
@@ -5169,6 +5169,7 @@ void func78()
 				if (s == "000000")
 				{
 					std::cout << " -- FOUND --- : " << SUM.get() << std::endl;
+					std::cout << " -- Number of digits in it: " << SUM.get().length() << std::endl;
 					res = i;
 					break;
 				}
@@ -5295,8 +5296,8 @@ void func78()
 					std::lock_guard<std::mutex> lockData(th.getMutex(myThreadLoop::MUTEX_DATA));
 						res = i;
 
-					std::cout << "\n\t -- FOUND --\n" << std::endl;
-				}
+					std::cout << "\n\t -- FOUND --\n" << std::endl; 
+				} 
 			}
 		}
 		else
@@ -5304,9 +5305,74 @@ void func78()
 			std::lock_guard<std::mutex> lockConsole(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
 				std::cout << " -- func(" << i << ") = " << n->get() << std::endl;
 		}
-	};
+	}; 
 
 	// ------------------------------------------------------------------------
+
+#endif
+
+	std::cout << "  res = " << res << std::endl;
+
+	validateResult(answer, res);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+void func79()
+{
+	size_t res = size_t(-1), answer = 71;
+
+#if 0
+
+	// Debug = 40
+	// Release = 0.9	/ 82.5
+	if(1)
+	{
+		stringNum n1("0");
+		stringNum n2("0");
+		stringNum n3("0");
+
+		size_t N = 200000;
+
+		for (int i = 0; i < N; i++)
+		{
+			n1 = n1 + stringNum("2");
+			n2 = n2 + stringNum("3");
+
+			n1 = n1 + n1;
+			n2 = n2 + n2;
+
+			n3 = n1 + n2;
+		}
+
+		doPrint(n3.get());
+	}
+
+#else
+
+	// Debug = 2.8
+	// Release = 1.07	/ 102
+	if(1)
+	{
+		longNum n1("0");
+		longNum n2("0");
+		longNum n3("0");
+
+		size_t N = 200000;
+
+		for (int i = 0; i < N; i++)
+		{
+			n1 = n1 + longNum("2");
+			n2 = n2 + longNum("3");
+
+			n1 = n1 + n1;
+			n2 = n2 + n2;
+
+			n3 = n1 + n2;
+		}
+
+		doPrint(n3.get());
+	}
 
 #endif
 
@@ -5321,11 +5387,10 @@ void func78()
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
-// -----------------------------------------------------------------------------------------------
 
 void func00()
 {
-	func78();
+	func79();
 }
 
 // -----------------------------------------------------------------------------------------------
