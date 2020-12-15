@@ -6,50 +6,50 @@
 
 class stringNum {
 
-	public:
+public:
 
-		stringNum()								: _str("0")					{ ; }
-		stringNum(const char* str)				: _str(str)					{ ; }
-		stringNum(const std::string& str)		: _str(str)					{ ; }
-		stringNum(const int num)				: _str(std::to_string(num))	{ ; }
-		stringNum(const size_t num)				: _str(std::to_string(num))	{ ; }
-		stringNum(const long long num)			: _str(std::to_string(num))	{ ; }
+	stringNum() : _str("0") { ; }
+	stringNum(const char* str) : _str(str) { ; }
+	stringNum(const std::string& str) : _str(str) { ; }
+	stringNum(const int num) : _str(std::to_string(num)) { ; }
+	stringNum(const size_t num) : _str(std::to_string(num)) { ; }
+	stringNum(const long long num) : _str(std::to_string(num)) { ; }
 
-		std::string&	get		()				{ return _str;						}
-		size_t			asSizeT	()				{ return std::atoi(_str.c_str());	}
+	std::string& get() { return _str; }
+	size_t			asSizeT() { return std::atoi(_str.c_str()); }
 
-		stringNum  operator + (stringNum &);
-		stringNum& operator +=(stringNum &);
-		stringNum  operator + (size_t);
-		stringNum  operator - (stringNum &);
-		stringNum  operator - (size_t);
-		stringNum  operator * (stringNum &);
-		stringNum  operator * (size_t);
-		stringNum  operator / (stringNum &);
-		bool	   operator > (stringNum &)			const;
-		bool	   operator >=(stringNum &)			const;
-		bool	   operator > (size_t)				const;
-		bool	   operator < (stringNum &)			const;
-		bool	   operator <=(stringNum &)			const;
-		bool	   operator < (size_t)				const;
-		bool	   operator ==(const stringNum &)	const;
-		bool	   operator ==(size_t);
-		stringNum& operator ++();
-		stringNum& operator --();
+	stringNum  operator + (stringNum&);
+	stringNum& operator +=(stringNum&);
+	stringNum  operator + (size_t);
+	stringNum  operator - (stringNum&);
+	stringNum  operator - (size_t);
+	stringNum  operator * (stringNum&);
+	stringNum  operator * (size_t);
+	stringNum  operator / (stringNum&);
+	bool	   operator > (stringNum&)			const;
+	bool	   operator >=(stringNum&)			const;
+	bool	   operator > (size_t)				const;
+	bool	   operator < (stringNum&)			const;
+	bool	   operator <=(stringNum&)			const;
+	bool	   operator < (size_t)				const;
+	bool	   operator ==(const stringNum&)	const;
+	bool	   operator ==(size_t);
+	stringNum& operator ++();
+	stringNum& operator --();
 
-		explicit operator bool()					const;
+	explicit operator bool()					const;
 
-	public:
-static	size_t _precision;
+public:
+	static	size_t _precision;
 
-	private:
-		std::unique_ptr<char[]> add(const stringNum &, const stringNum &, size_t &);
+private:
+	std::unique_ptr<char[]> add(const stringNum&, const stringNum&, size_t&);
 
-		void mult_General	(const stringNum&, const stringNum&, stringNum&) const;
-		void mult_Karatsuba	(stringNum&, stringNum&, stringNum& res, size_t minVal = 10) const;
+	void mult_General(const stringNum&, const stringNum&, stringNum&) const;
+	void mult_Karatsuba(stringNum&, stringNum&, stringNum& res, size_t minVal = 10) const;
 
-	private:
-		std::string _str;
+private:
+	std::string _str;
 };
 
 size_t stringNum::_precision = 0;
@@ -58,9 +58,9 @@ size_t stringNum::_precision = 0;
 
 // Fast addition (10x times faster than before)
 // Returns unique_ptr to char array and size_t & offset (which MUST be taken into account)
-std::unique_ptr<char[]> stringNum::add(const stringNum &num1, const stringNum &num2, size_t &data_len)
+std::unique_ptr<char[]> stringNum::add(const stringNum& num1, const stringNum& num2, size_t& data_len)
 {
-	int overflow = 0;
+	int carryOver = 0;
 	const std::string* pStr1 = &num1._str,
 		* pStr2 = &num2._str;
 
@@ -84,13 +84,13 @@ std::unique_ptr<char[]> stringNum::add(const stringNum &num1, const stringNum &n
 	{
 		int num1 = int(pStr1->at(i) - 48);
 		int num2 = i >= dif ? int(pStr2->at(i - dif) - 48) : 0;
-		int nRes = num1 + num2 + overflow;
+		int nRes = num1 + num2 + carryOver;
 
 		data[--data_len] = char(nRes % 10 + 48);
-		overflow = nRes > 9 ? 1 : 0;
+		carryOver = nRes > 9 ? 1 : 0;
 	}
 
-	if (overflow)
+	if (carryOver)
 		data[--data_len] = '1';
 
 	return data;
@@ -98,7 +98,7 @@ std::unique_ptr<char[]> stringNum::add(const stringNum &num1, const stringNum &n
 
 // -----------------------------------------------------------------------------------------------
 
-stringNum stringNum::operator +(stringNum &other)
+stringNum stringNum::operator +(stringNum& other)
 {
 	size_t offset;
 	return stringNum(add(*this, other, offset).get() + offset);
@@ -106,7 +106,7 @@ stringNum stringNum::operator +(stringNum &other)
 
 // -----------------------------------------------------------------------------------------------
 
-stringNum & stringNum::operator +=(stringNum &other)
+stringNum& stringNum::operator +=(stringNum& other)
 {
 	size_t offset;
 	this->_str = (add(*this, other, offset).get() + offset);
@@ -122,7 +122,7 @@ stringNum stringNum::operator +(size_t other)
 
 // -----------------------------------------------------------------------------------------------
 
-stringNum stringNum::operator -(stringNum &other)
+stringNum stringNum::operator -(stringNum& other)
 {
 	size_t zeroPos = 0;
 	std::string res;
@@ -133,7 +133,7 @@ stringNum stringNum::operator -(stringNum &other)
 	}
 	else
 	{
-		std::string tmp, * pStr1 = &_str, * pStr2 = &other._str, *pStr;;
+		std::string tmp, * pStr1 = &_str, * pStr2 = &other._str, * pStr;;
 		bool isNegative(*this < other);
 
 		if (_str.length() != other._str.length())
@@ -170,7 +170,7 @@ stringNum stringNum::operator -(stringNum &other)
 		for (size_t i = len; i > 0; i--)
 		{
 			int nRes,
-				num1 = int(pStr1->at(i - 1) - 48), 
+				num1 = int(pStr1->at(i - 1) - 48),
 				num2 = int(pStr2->at(i - 1) - 48) + overflow;
 
 			if (num1 < num2)
@@ -213,7 +213,7 @@ stringNum stringNum::operator -(size_t other)
 
 // -----------------------------------------------------------------------------------------------
 
-bool stringNum::operator >(stringNum &other) const
+bool stringNum::operator >(stringNum& other) const
 {
 	if (_str.length() > other._str.length())
 		return true;
@@ -288,7 +288,7 @@ stringNum stringNum::operator *(stringNum& other)
 // -----------------------------------------------------------------------------------------------
 
 // General multiplication algorithm
-void stringNum::mult_General(const stringNum &n1, const stringNum &n2, stringNum &res) const
+void stringNum::mult_General(const stringNum& n1, const stringNum& n2, stringNum& res) const
 {
 	int cnt = 0, carryOver = 0;
 
@@ -308,7 +308,7 @@ void stringNum::mult_General(const stringNum &n1, const stringNum &n2, stringNum
 
 				if (i1 > 9)
 				{
-					carryOver  = i1 / 10;
+					carryOver = i1 / 10;
 					i1 = i1 % 10;
 				}
 				else
@@ -398,11 +398,11 @@ stringNum stringNum::operator *(size_t other)
 
 // -----------------------------------------------------------------------------------------------
 
-stringNum stringNum::operator /(stringNum &other)
+stringNum stringNum::operator /(stringNum& other)
 {
 	stringNum tmp(*this), res("0"), one("1");
 
-	while ( 1 )
+	while (1)
 	{
 		if (tmp < other)
 			break;
@@ -419,7 +419,7 @@ stringNum stringNum::operator /(stringNum &other)
 
 		while (precision--)
 		{
-			if(tmp._str[0] != '0')
+			if (tmp._str[0] != '0')
 				tmp._str += "0";
 
 			size_t res2 = 0;
@@ -454,7 +454,7 @@ stringNum stringNum::operator /(stringNum &other)
 					{
 						prev++;
 
-						if(prev < 10)
+						if (prev < 10)
 							dec._str += char(prev) + 48;
 						else
 						{
@@ -465,7 +465,7 @@ stringNum stringNum::operator /(stringNum &other)
 			}
 		}
 
-		if( dec > one )
+		if (dec > one)
 			res._str += "." + dec._str;
 	}
 
@@ -474,7 +474,7 @@ stringNum stringNum::operator /(stringNum &other)
 
 // -----------------------------------------------------------------------------------------------
 
-bool stringNum::operator ==(const stringNum &other) const
+bool stringNum::operator ==(const stringNum& other) const
 {
 	return _str == other._str;
 }
@@ -553,142 +553,11 @@ stringNum stringNum_Pow_Recursive(size_t num, size_t pow)
 		return stringNum(1);
 
 	if (pow % 2 != 0)
-		return stringNum_Pow_Recursive(num, pow-1) * num;
+		return stringNum_Pow_Recursive(num, pow - 1) * num;
 
-	stringNum tmp = stringNum_Pow_Recursive(num, pow/2);
+	stringNum tmp = stringNum_Pow_Recursive(num, pow / 2);
 
 	return tmp * tmp;
 }
 
 // -----------------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-class longNum {
-
-	typedef int digitType;
-
-	public:
-
-		longNum() : _values(nullptr), _length(0)
-		{
-		}
-
-		longNum(const char *str)
-		{
-			_length = strlen(str);
-
-			_values = new digitType[_length];
-
-			for (size_t i = 0; i < _length; i++)
-			{
-				_values[_length - i - 1] = (str[i] - 48);
-			}
-		}
-
-		longNum(longNum&& other) noexcept
-		{
-			this->_length = std::move(other._length);
-			this->_values = std::move(other._values);
-
-			other._length = 0;
-			other._values = nullptr;
-		}
-
-		~longNum()
-		{
-			if (_values)
-			{
-				delete[] _values;
-				_values = nullptr;
-				_length = 0;
-			}
-		}
-
-		// Return number as a string in normal order
-		std::string get()
-		{
-			std::string str;
-			str.reserve(_length);
-
-			for (size_t i = 0; i < _length; i++)
-				str += static_cast<char>(_values[_length - i - 1] + 48);
-
-			return str;
-		}
-
-		longNum operator +(const longNum &other)
-		{
-			const longNum* p1, * p2;
-			longNum res;
-
-			if (_length > other._length)
-			{
-				p1 = this;
-				p2 = &other;
-			}
-			else
-			{
-				p1 = &other;
-				p2 = this;
-			}
-			
-			res._length = p1->_length;
-			res._values = new digitType[p1->_length + 1];
-			res._values[p1->_length] = 0;
-
-			for (size_t i = 0; i < res._length; i++)
-				res._values[i] = p1->_values[i] + (i < p2->_length ? p2->_values[i] : 0);
-
-			res.normalize();
-
-			return std::move(res);
-		}
-
-		longNum& longNum::operator =(longNum&& other) noexcept
-		{
-			if (this != &other)
-			{
-				if (_values)
-					delete[] _values;
-
-				this->_length = std::move(other._length);
-				this->_values = std::move(other._values);
-
-				other._length = 0;
-				other._values = nullptr;
-			}
-
-			return *this;
-		}
-
-		void normalize()
-		{
-			for (size_t i = 0; i < _length; i++)
-			{
-				digitType nnn = _values[i];
-
-				if (_values[i] >= 10)
-				{
-					digitType carryOver = _values[i] / 10;
-
-					_values[i + 1] += carryOver;
-					_values[  i  ] -= carryOver * 10;
-
-					if (i + 1 >= _length)
-						_length++;
-				}
-			}
-		}
-
-	private:
-
-		digitType*	_values;
-		size_t		_length;
-};
-
-

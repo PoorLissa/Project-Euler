@@ -19,6 +19,7 @@
 #include "__Threads.h"
 #include "__Helpers.h"
 #include "__stringNum.h"
+#include "__longNum.h"
 
 #ifdef max
   #undef max
@@ -5305,7 +5306,7 @@ void func78()
 			std::lock_guard<std::mutex> lockConsole(th.getMutex(myThreadLoop::MUTEX_CONSOLE));
 				std::cout << " -- func(" << i << ") = " << n->get() << std::endl;
 		}
-	}; 
+	};
 
 	// ------------------------------------------------------------------------
 
@@ -5323,16 +5324,70 @@ void func79()
 	size_t res = size_t(-1), answer = 71;
 
 #if 0
+	{
+		longNum n1("123");
+		longNum n2(123);
 
-	// Debug = 40
-	// Release = 0.9	/ 82.5
-	if(1)
+		longNum n3 = 877;
+
+		std::cout << "Here goes..." << std::endl;
+
+		n3 += longNum(1123);
+
+		doPrint(n1.get());
+		doPrint(n2.get());
+		doPrint(n3.get());
+
+		return;
+	}
+#endif
+
+#if 0
+	{
+		size_t N = 33333;
+
+		stringNum sn1("0");
+		stringNum sn2("0");
+		stringNum sn3("0");
+
+		for (int i = 0; i < N; i++)
+		{
+			sn1 = sn1 + stringNum("2");
+			sn2 = sn2 + stringNum("3");
+
+			sn1  = sn1 + sn1;
+			sn2 += sn2;
+			sn3  = sn1 + sn2;
+		}
+
+		longNum ln1("0");
+		longNum ln2("0");
+		longNum ln3("0");
+
+		for (int i = 0; i < N; i++)
+		{
+			ln1 = ln1 + longNum("2");
+			ln2 = ln2 + longNum("3");
+
+			ln1  = ln1 + ln1;
+			ln2 += ln2;
+			ln3  = ln1 + ln2;
+		}
+
+		std::cout << " --- " << (sn3.get() == ln3.get() ? "OK" : "FAIL") << " ---" << std::endl;
+
+		return;
+	}
+#endif
+
+	size_t N = 100000;
+
+#if 0
+
 	{
 		stringNum n1("0");
 		stringNum n2("0");
 		stringNum n3("0");
-
-		size_t N = 200000;
 
 		for (int i = 0; i < N; i++)
 		{
@@ -5341,7 +5396,6 @@ void func79()
 
 			n1 = n1 + n1;
 			n2 = n2 + n2;
-
 			n3 = n1 + n2;
 		}
 
@@ -5350,15 +5404,11 @@ void func79()
 
 #else
 
-	// Debug = 2.8
-	// Release = 1.07	/ 102
-	if(1)
+	// 12.1
 	{
 		longNum n1("0");
 		longNum n2("0");
 		longNum n3("0");
-
-		size_t N = 200000;
 
 		for (int i = 0; i < N; i++)
 		{
@@ -5367,12 +5417,86 @@ void func79()
 
 			n1 = n1 + n1;
 			n2 = n2 + n2;
-
 			n3 = n1 + n2;
 		}
 
 		doPrint(n3.get());
 	}
+
+#endif
+
+	std::cout << "  res = " << res << std::endl;
+
+	validateResult(answer, res);
+}
+
+void func80()
+{
+	size_t res = size_t(-1), answer = 71;
+
+	size_t N = 50000;
+
+#if 0
+
+	// 9.85
+	{
+		stringNum n1("0");
+		stringNum n2("0");
+		stringNum n3("0");
+		stringNum n4("0");
+
+		for (int i = 0; i < N; i++)
+		{
+			n1 += stringNum("2");
+			n2 += stringNum("3");
+
+			n1 += n1;
+			n2 += n2;
+			n3 += n1;
+			n3 += n2;
+			n4 += n3;
+
+			stringNum n5("0");
+			n5 += stringNum(n4);
+
+			n4 += n5;
+		}
+
+		doPrint(n4.get());
+	}
+
+#else
+
+	// 6.17
+	{
+		longNum n1("0");
+		longNum n2("0");
+		longNum n3("0");
+		longNum n4("0");
+
+		for (int i = 0; i < N; i++)
+		{
+			n1 += longNum("2");
+			n2 += longNum("3");
+
+			n1 += n1;
+			n2 += n2;
+			n3 += n1;
+			n3 += n2;
+			n4 += n3;
+
+			longNum n5("0");
+			n5 += longNum(n4);
+
+			n4 += n5;
+	}
+
+		doPrint(n4.get());
+
+		doPrint("");
+
+		doPrint(longNum::cnt);
+}
 
 #endif
 
@@ -5390,7 +5514,7 @@ void func79()
 
 void func00()
 {
-	func79();
+	func80();
 }
 
 // -----------------------------------------------------------------------------------------------
