@@ -5505,6 +5505,157 @@ void func80()
 	validateResult(answer, res);
 }
 
+void func81()
+{
+	size_t doStop = 0, answer = 0;
+
+	long N = 101;
+
+	for (long i = -N; i <= N; i++)
+	{
+		for (long j = -N; j <= N; j++)
+		{
+			if ((i == j) != (longNum(i) == longNum(j)))
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 1: " << i << " == " << j << std::endl;
+				break;
+			}
+
+			if ((i == j) != (longNum(i) == j))
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 2: " << i << " == " << j << std::endl;
+				break;
+			}
+
+			if ((i != j) != (longNum(i) != longNum(j)))
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 1: " << i << " != " << j << std::endl;
+				break;
+			}
+
+			if ((i != j) != (longNum(i) != j))
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 2: " << i << " != " << j << std::endl;
+				break;
+			}
+
+			if ((i > j) != (longNum(i) > longNum(j)))
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 1: " << i << " > " << j << std::endl;
+				break;
+			}
+
+			if ((i > j) != (longNum(i) > j))
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 2: " << i << " > " << j << std::endl;
+				break;
+			}
+
+			if ((i >= j) != (longNum(i) >= longNum(j)))
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 1: " << i << " >= " << j << std::endl;
+				break;
+			}
+
+			if ((i >= j) != (longNum(i) >= j))
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 2: " << i << " >= " << j << std::endl;
+				break;
+			}
+
+			if ((i < j) != (longNum(i) < longNum(j)))
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 1: " << i << " < " << j << std::endl;
+				break;
+			}
+
+			if ((i < j) != (longNum(i) < j))
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 2: " << i << " < " << j << std::endl;
+				break;
+			}
+
+			if ((i <= j) != (longNum(i) <= longNum(j)))
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 1: " << i << " <= " << j << std::endl;
+				break;
+			}
+
+			if ((i <= j) != (longNum(i) <= j))
+			{ 
+				doStop = 1;
+				std::cout << " -- ERROR 2: " << i << " <= " << j << std::endl;
+				break;
+			}
+
+			if ( !(longNum(i) + longNum(j) == (i + j)) )
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 1: " << i << " + " << j << std::endl;
+				break;
+			}
+
+			if ( !(longNum(i) + j == (i + j)) )
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 2: " << i << " + " << j << std::endl;
+				break;
+			}
+/*
+			{
+				longNum n1(i), n2(j);
+				n1 += n2;
+
+				if (!(n1 == (i + j)))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 1: " << i << " += " << j << std::endl;
+					break;
+				}
+
+				n1 += j;
+				n1 += i;
+
+				if (!(n1 == (i + j + i + j)))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 2: " << i << " += " << j << std::endl;
+					break;
+				}
+
+			}
+
+			if (!(longNum(i) - longNum(j) == (i - j)))
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 1: " << i << " - " << j << std::endl;
+				break;
+			}
+
+			if (!(longNum(i) - j == (i - j)))
+			{
+				doStop = 1;
+				std::cout << " -- ERROR 2: " << i << " - " << j << std::endl;
+				break;
+			}
+*/
+		}
+	}
+
+	validateResult(answer, doStop);
+}
+
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
@@ -5514,7 +5665,7 @@ void func80()
 
 void func00()
 {
-	func80();
+	func81();
 }
 
 // -----------------------------------------------------------------------------------------------

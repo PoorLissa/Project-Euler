@@ -4,16 +4,21 @@
 
 // -----------------------------------------------------------------------------------------------
 
+/*
+	TODO:
+		1. (-1) - (-100) = -7129	-- fix this
+*/
+
 class stringNum {
 
 public:
 
-	stringNum() : _str("0") { ; }
-	stringNum(const char* str) : _str(str) { ; }
-	stringNum(const std::string& str) : _str(str) { ; }
-	stringNum(const int num) : _str(std::to_string(num)) { ; }
-	stringNum(const size_t num) : _str(std::to_string(num)) { ; }
-	stringNum(const long long num) : _str(std::to_string(num)) { ; }
+	stringNum() : _str("0")											{ ; }
+	stringNum(const char* str)			: _str(str)					{ ; }
+	stringNum(const std::string& str)	: _str(str)					{ ; }
+	stringNum(const int num)			: _str(std::to_string(num)) { ; }
+	stringNum(const size_t num)			: _str(std::to_string(num)) { ; }
+	stringNum(const long long num)		: _str(std::to_string(num)) { ; }
 
 	std::string& get() { return _str; }
 	size_t			asSizeT() { return std::atoi(_str.c_str()); }
