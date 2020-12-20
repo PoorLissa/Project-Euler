@@ -5507,6 +5507,24 @@ void func80()
 
 void func81()
 {
+#if 0
+	longNum n1(10l);
+	longNum n2( 5l);
+
+	longNum n3 = n1 - n2;
+
+	std::cout << " res = " << n3.get() << std::endl;
+
+	longNum n4(-10l);
+	longNum n5( -5l);
+
+	longNum n6 = n4 - n5;
+
+	std::cout << " res = " << n6.get() << std::endl;
+
+	return;
+#endif
+
 	size_t doStop = 0, answer = 0;
 
 	long N = 101;
@@ -5529,6 +5547,8 @@ void func81()
 				break;
 			}
 
+			// --------------------------------------------------------------------------
+
 			if ((i != j) != (longNum(i) != longNum(j)))
 			{
 				doStop = 1;
@@ -5542,6 +5562,8 @@ void func81()
 				std::cout << " -- ERROR 2: " << i << " != " << j << std::endl;
 				break;
 			}
+
+			// --------------------------------------------------------------------------
 
 			if ((i > j) != (longNum(i) > longNum(j)))
 			{
@@ -5557,6 +5579,8 @@ void func81()
 				break;
 			}
 
+			// --------------------------------------------------------------------------
+
 			if ((i >= j) != (longNum(i) >= longNum(j)))
 			{
 				doStop = 1;
@@ -5570,6 +5594,8 @@ void func81()
 				std::cout << " -- ERROR 2: " << i << " >= " << j << std::endl;
 				break;
 			}
+
+			// --------------------------------------------------------------------------
 
 			if ((i < j) != (longNum(i) < longNum(j)))
 			{
@@ -5585,6 +5611,8 @@ void func81()
 				break;
 			}
 
+			// --------------------------------------------------------------------------
+
 			if ((i <= j) != (longNum(i) <= longNum(j)))
 			{
 				doStop = 1;
@@ -5599,59 +5627,119 @@ void func81()
 				break;
 			}
 
-			if ( !(longNum(i) + longNum(j) == (i + j)) )
+			// --------------------------------------------------------------------------
+
+			// operator +
 			{
-				doStop = 1;
-				std::cout << " -- ERROR 1: " << i << " + " << j << std::endl;
-				break;
+				if ( !(longNum(i) + longNum(j) == (i + j)) )
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 1: " << i << " + " << j << std::endl;
+					break;
+				}
+
+				if ( !(longNum(i) + j == (i + j)) )
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 2: " << i << " + " << j << std::endl;
+					break;
+				}
 			}
 
-			if ( !(longNum(i) + j == (i + j)) )
+			// --------------------------------------------------------------------------
+
+			// operator +=
 			{
-				doStop = 1;
-				std::cout << " -- ERROR 2: " << i << " + " << j << std::endl;
-				break;
-			}
-/*
-			{
-				longNum n1(i), n2(j);
+				longNum n1(i), n2(j), n3(i);
+
+				// operator +=
 				n1 += n2;
 
-				if (!(n1 == (i + j)))
+				if ( !(n1 == (i + j)) || !(n2 == j) )
 				{
 					doStop = 1;
 					std::cout << " -- ERROR 1: " << i << " += " << j << std::endl;
 					break;
 				}
 
-				n1 += j;
-				n1 += i;
+				// operator += -- move semantics
+				n2 += longNum(i);
 
-				if (!(n1 == (i + j + i + j)))
+				if ( !(n2 == (i + j)) )
 				{
 					doStop = 1;
 					std::cout << " -- ERROR 2: " << i << " += " << j << std::endl;
 					break;
 				}
 
+				// operator += -- templated
+				n3 += j;
+
+				if (!(n3 == (i + j)))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 3: " << i << " += " << j << std::endl;
+					break;
+				}
 			}
 
-			if (!(longNum(i) - longNum(j) == (i - j)))
+			// --------------------------------------------------------------------------
+
+			// operator -
 			{
-				doStop = 1;
-				std::cout << " -- ERROR 1: " << i << " - " << j << std::endl;
-				break;
+				if ( !(longNum(i) - longNum(j) == (i - j)) )
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 1: " << i << " - " << j << std::endl;
+					break;
+				}
+
+				if (!(longNum(i) - j == (i - j)))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 2: " << i << " - " << j << std::endl;
+					break;
+				}
 			}
 
-			if (!(longNum(i) - j == (i - j)))
+			// --------------------------------------------------------------------------
+
+			// operator -=
 			{
-				doStop = 1;
-				std::cout << " -- ERROR 2: " << i << " - " << j << std::endl;
-				break;
+			
 			}
-*/
+
+			// --------------------------------------------------------------------------
+
+			// operator bool()
+			{
+				longNum n1(i), n2(j);
+
+				if ((n1 && n2) != (i && j) || (n1 || n2) != (i || j))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 1: " << i << " bool " << j << std::endl;
+					break;
+				}
+
+				if (!n1 != !i)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 2: " << i << " bool " << j << std::endl;
+					break;
+				}
+
+				if (!n2 != !j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 3: " << i << " bool " << j << std::endl;
+					break;
+				}
+			}
 		}
 	}
+
+	std::cout << " errors: " << answer << std::endl;
 
 	validateResult(answer, doStop);
 }

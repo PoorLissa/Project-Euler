@@ -11,42 +11,6 @@ constexpr bool NEG = false;
 
 // -----------------------------------------------------------------------------------------------
 
-
-class A {
-
-	public:
-
-		A() { ; }
-		A(char ch) { ; }
-
-		bool operator >(A& other) const
-		{
-			return true;
-		}
-
-		template <class Type>
-		bool operator >(Type other) const
-		{
-			A a(other);
-
-			return *this > a;
-		}
-
-		A operator +(const A& other) const
-		{
-			return A('a');
-		}
-
-		template <class Type>
-		A operator +(const Type other) const
-		{
-			A a(other);
-
-			return *this + a;
-		}
-};
-
-
 class longNum {
 
 		typedef short digitType;
@@ -76,11 +40,7 @@ class longNum {
 		longNum &	operator = (size_t);
 
 		bool		operator ==(const longNum &)	const;
-		bool		operator ==(const size_t)		const;
-		bool		operator ==(const long)			const;
 		bool		operator !=(const longNum &)	const;
-		bool		operator !=(const size_t   )	const;
-		bool		operator !=(const long)			const;
 
 		bool		operator > (const longNum &)	const;
 		bool		operator >=(const longNum &)	const;
@@ -88,6 +48,14 @@ class longNum {
 		bool		operator <=(const longNum &)	const;
 
 		longNum		operator + (const longNum &)	const;
+		longNum &	operator +=(const longNum &);
+		longNum &	operator +=(	  longNum &&) noexcept;
+
+		longNum		operator - (const longNum &)	const;
+		longNum &	operator -=(const longNum &);
+
+		template <class Type> bool		operator ==(const Type) const;
+		template <class Type> bool		operator !=(const Type) const;
 
 		template <class Type> bool		operator > (const Type) const;
 		template <class Type> bool		operator >=(const Type) const;
@@ -95,13 +63,10 @@ class longNum {
 		template <class Type> bool		operator <=(const Type) const;
 
 		template <class Type> longNum	operator + (const Type) const;
+		template <class Type> longNum &	operator +=(const Type);
+		template <class Type> longNum	operator - (const Type) const;
 
-		longNum &	operator +=(const longNum  &);
-		longNum &	operator +=(	  longNum &&) noexcept;
-		longNum &	operator +=(const size_t);
-
-		longNum		operator - (const longNum &);
-		longNum		operator - (const size_t);
+		explicit operator bool() const;
 
 
 		// Getters
@@ -110,7 +75,7 @@ class longNum {
 
 	private:
 		void   add2positive	(const longNum &, const longNum &, longNum &)	const;			// Add 2 positive numbers
-		void subtr2positive	(const longNum &, const longNum &, longNum &)	const;			// Subtract 2 positive numbers
+		bool subtr2positive	(const longNum &, const longNum &, longNum &)	const;			// Subtract 2 positive numbers
 
 		int absValueIsLarger(const longNum &, const longNum &)				const;			// Operator > for absolute values of the 2 numbers
 
@@ -154,10 +119,9 @@ longNum::longNum(const char *str) : _length(strlen(str)), _sign(POS)
 
 longNum::longNum(longNum& other) : _length(other._length)
 {
-	#if defined _TRACE_
-		std::cout << " ---> Alloc" << std::endl;
-	#endif
-
+#if defined _TRACE_
+	std::cout << " ---> Alloc" << std::endl;
+#endif
 	_values = new digitType[_length];
 	memcpy(_values, other._values, sizeof(digitType) * _length);
 	_sign = other._sign;
@@ -183,10 +147,9 @@ longNum::longNum(size_t num) : _length(0u), _sign(POS)
 
 	if (num == 0)
 	{
-		#if defined _TRACE_
-			std::cout << " ---> Alloc" << std::endl;
-		#endif
-
+#if defined _TRACE_
+		std::cout << " ---> Alloc" << std::endl;
+#endif
 		_length = 1;
 		_values = new digitType[_length];
 		_values[0] = 0u;
@@ -198,9 +161,9 @@ longNum::longNum(size_t num) : _length(0u), _sign(POS)
 
 		if (_length)
 		{
-			#if defined _TRACE_
-				std::cout << " ---> Alloc" << std::endl;
-			#endif
+#if defined _TRACE_
+			std::cout << " ---> Alloc" << std::endl;
+#endif
 			_values = new digitType[_length];
 		}
 
@@ -222,10 +185,9 @@ longNum::longNum(long num) : _length(0u), _sign(POS)
 
 	if (num == 0)
 	{
-		#if defined _TRACE_
-			std::cout << " ---> Alloc" << std::endl;
-		#endif
-
+#if defined _TRACE_
+		std::cout << " ---> Alloc" << std::endl;
+#endif
 		_length = 1;
 		_values = new digitType[_length];
 		_values[0] = 0u;
@@ -243,9 +205,9 @@ longNum::longNum(long num) : _length(0u), _sign(POS)
 
 		if (_length)
 		{
-			#if defined _TRACE_
-				std::cout << " ---> Alloc" << std::endl;
-			#endif
+#if defined _TRACE_
+			std::cout << " ---> Alloc" << std::endl;
+#endif
 			_values = new digitType[_length];
 		}
 
@@ -291,9 +253,9 @@ longNum& longNum::operator =(longNum& other)
 
 		if (!_values)
 		{
-			#if defined _TRACE_
-				std::cout << " ---> Alloc" << std::endl;
-			#endif
+#if defined _TRACE_
+			std::cout << " ---> Alloc" << std::endl;
+#endif
 			_values = new digitType[_length];
 		}
 
@@ -353,14 +315,8 @@ bool longNum::operator ==(const longNum& other) const
 
 // -----------------------------------------------------------------------------------------------
 
-bool longNum::operator ==(const size_t other) const
-{
-	return *this == longNum(other);
-}
-
-// -----------------------------------------------------------------------------------------------
-
-bool longNum::operator ==(const long other) const
+template <class Type>
+bool longNum::operator ==(const Type other) const
 {
 	return *this == longNum(other);
 }
@@ -374,16 +330,10 @@ bool longNum::operator !=(const longNum &other) const
 
 // -----------------------------------------------------------------------------------------------
 
-bool longNum::operator !=(const size_t other) const
+template <class Type>
+bool longNum::operator !=(const Type other) const
 {
-	return !(*this == longNum(other));
-}
-
-// -----------------------------------------------------------------------------------------------
-
-bool longNum::operator !=(const long other) const
-{
-	return !(*this == longNum(other));
+	return *this != longNum(other);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -583,45 +533,161 @@ longNum longNum::operator +(const Type other) const
 
 longNum& longNum::operator +=(const longNum &other)
 {
-	// There's a chance we'll be able to add the 2 numbers without reallocation
-
-	if (_length < other._length)
+	if (_sign == other._sign)
 	{
-		// Go with full alloc cycle
-		*this = *this + other;
+		// In case the sign is the same, we add the numbers and keep the sign.
+		// Also, there's a chance we'll be able to add the 2 numbers without reallocation
+		if (_length < other._length)
+		{
+			// Go with full alloc cycle
+			*this = *this + other;
+		}
+		else
+		{
+			// Perform adding in place
+			digitType carryOver = 0u, nRes = 0u;
+
+			for (size_t i = 0; i < _length; ++i)
+			{
+				nRes = _values[i] + carryOver;
+
+				if (i < other._length)
+					nRes += other._values[i];
+
+				_values[i] = nRes % BASE;
+
+				carryOver = (nRes >= BASE) ? 1u : 0u;
+			}
+
+			// If carryOver > 0, we need to reallocate and normalize
+			if (carryOver)
+			{
+#if defined _TRACE_
+				std::cout << " ---> Alloc" << std::endl;
+#endif
+				digitType* newVal = new digitType[_length + 1u];
+
+				memcpy(newVal, _values, sizeof(digitType) * _length);
+
+				newVal[_length++] = carryOver;
+
+				delete[] _values;
+				_values = newVal;
+			}
+		}
 	}
 	else
 	{
-		// Perform adding in place
-		digitType carryOver = 0u, nRes = 0u;
+		// In case the signs are opposite, we subtract smaller number from the greater and keep the sign of the greater one
 
-		for (size_t i = 0; i < _length; ++i)
+		// First, we need to determine which number's absolute value is greater
+		int isGreater = absValueIsLarger(*this, other);
+
+		// The numbers are equal, return 0
+		if (!isGreater)
 		{
-			nRes = _values[i] + carryOver;
+#if defined _TRACE_
+			std::cout << " ---> Alloc for '0' value" << std::endl;
+#endif
+			// TODO: don't reallocate if _length is relatively small
+			// Just set _length to 1 and Values[] to 0
+			// Need to test it later
+			if (_length > 1)
+			{
+				delete[] _values;
+				_values = new digitType[1];
+			}
 
-			if (i < other._length)
-				nRes += other._values[i];
-
-			_values[i] = nRes % BASE;
-
-			carryOver = (nRes >= BASE) ? 1u : 0u;
+			_length = 1;
+			_values[0] = 0;
+			_sign = POS;
 		}
-
-		// If carryOver > 0, we need to reallocate and normalize
-		if (carryOver)
+		else
 		{
-			#if defined _TRACE_
-				std::cout << " ---> Alloc" << std::endl;
-			#endif
+			const longNum* pn1(this);
+			const longNum* pn2(&other);
 
-			digitType *newVal = new digitType[_length + 1u];
+			digitType* res = pn1->_values;
 
-			memcpy(newVal, _values, sizeof(digitType) * _length);
+			size_t i = 0, cnt = 0;
 
-			newVal[_length++] = carryOver;
+			if (isGreater == 2)
+			{
+#if defined _TRACE_
+				std::cout << " ---> Alloc tmp buffer" << std::endl;
+#endif
+				// This < other: Will need another buffer for the result
+				pn1 = &other;
+				pn2 = this;
 
-			delete[] _values;
-			_values = newVal;
+				res = new digitType[pn1->_length];
+
+				res[0] = pn1->_values[0];
+
+				for (; i < pn2->_length; ++i)
+				{
+					if (i < pn2->_length)
+						res[i+1] = pn1->_values[i+1];
+
+					while (res[i] < pn2->_values[i])
+					{
+						res[i+1]--;
+						res[i] += BASE;
+					}
+
+					res[i] -= pn2->_values[i];
+					cnt = res[i] ? 0 : cnt + 1;
+				}
+
+				for (; i < pn1->_length; ++i)
+				{
+					res[i+1] = pn1->_values[i+1];
+
+					while (res[i] < 0)
+					{
+						res[i+1]--;
+						res[i] += BASE;
+					}
+
+					cnt = res[i] ? 0 : cnt + 1;
+				}
+
+				_length = pn1->_length - cnt;				// Adjust the length, so leading zeroes will be trimmed out
+
+				delete[] _values;
+				_values = res;
+			}
+			else
+			{
+				// This > other: No need for realloc. Subtract numbers in place
+				for (; i < pn2->_length; ++i)
+				{
+					while (res[i] < pn2->_values[i])
+					{
+						res[i+1]--;
+						res[i] += BASE;
+					}
+
+					res[i] = pn1->_values[i] - pn2->_values[i];
+					cnt = res[i] ? 0 : cnt + 1;
+				}
+
+				for (; i < pn1->_length; ++i)
+				{
+					while (pn1->_values[i] < 0)
+					{
+						pn1->_values[i+1]--;
+						pn1->_values[i] += BASE;
+					}
+
+					res[i] = pn1->_values[i];
+					cnt = res[i] ? 0 : cnt + 1;
+				}
+
+				_length -= cnt;								// Adjust the length, so leading zeroes will be trimmed out
+			}
+
+			_sign = pn1->_sign;								// Sign is determined by the greater number (in absolute terms)
 		}
 	}
 
@@ -637,11 +703,14 @@ longNum& longNum::operator +=(longNum&& other) noexcept
 	{
 		size_t	   tmpLength = _length;
 		digitType* tmpValues = _values;
+		bool	   tmpSign   = _sign;
 
 		_length = other._length;
+		_sign   = other._sign;
 		_values = std::move(other._values);
 
 		other._length = tmpLength;
+		other._sign   = tmpSign;
 		other._values = std::move(tmpValues);
 	}
 
@@ -652,7 +721,8 @@ longNum& longNum::operator +=(longNum&& other) noexcept
 
 // -----------------------------------------------------------------------------------------------
 
-longNum& longNum::operator +=(const size_t other)
+template <class Type>
+longNum& longNum::operator +=(const Type other)
 {
 	*this += longNum(other);
 
@@ -661,17 +731,21 @@ longNum& longNum::operator +=(const size_t other)
 
 // -----------------------------------------------------------------------------------------------
 
-longNum longNum::operator -(const longNum& other)
+longNum longNum::operator -(const longNum& other) const
 {
 	longNum res;
 
-	if (*this == other)
+	if (_sign == other._sign)
 	{
-		res = 0u;
+		// a < b -- change sign
+		// a > b -- ok
+		if (subtr2positive(*this, other, res))
+			res._sign = !res._sign;
 	}
 	else
 	{
-
+		add2positive(*this, other, res);
+		res._sign = _sign;
 	}
 
 	return std::move(res);
@@ -679,9 +753,24 @@ longNum longNum::operator -(const longNum& other)
 
 // -----------------------------------------------------------------------------------------------
 
-longNum longNum::operator -(size_t other)
+template <class Type>
+longNum	longNum::operator -(const Type other) const
 {
 	return std::move(*this - longNum(other));
+}
+
+// -----------------------------------------------------------------------------------------------
+
+longNum& longNum::operator -=(const longNum& other)
+{
+	return *this;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+longNum::operator bool() const
+{
+	return _length != 1 || _values[0] != 0;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -760,12 +849,16 @@ void longNum::add2positive(const longNum &n1, const longNum &n2, longNum &res) c
 // -----------------------------------------------------------------------------------------------
 
 // Subtract 2 positive numbers
-void longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res) const
+// Returns:
+//	false : n1 >= n2
+//	true  : n1 <  n2
+bool longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res) const
 {
-	#if defined _TRACE_
-		std::cout << " ---> Alloc" << std::endl;
-	#endif
+	bool bRes = true;
 
+#if defined _TRACE_
+	std::cout << " ---> Alloc" << std::endl;
+#endif
 	const longNum* pn1(&n2);
 	const longNum* pn2(&n1);
 
@@ -776,15 +869,16 @@ void longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res)
 	if (!isGreater)
 	{
 		res._length = 1;
-		res._values = new digitType[pn1->_length];
+		res._values = new digitType[1];
 		res._values[0] = 0;
-		return;
+		return false;
 	}
 
 	if (isGreater == 1)
 	{
 		pn1 = &n1;
 		pn2 = &n2;
+		bRes = false;
 	}
 
 	res._length = pn1->_length;
@@ -800,7 +894,7 @@ void longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res)
 			pn1->_values[i] += BASE;
 		}
 
-		res._values[i] = (pn1->_values[i]) - (pn2->_values[i]);
+		res._values[i] = pn1->_values[i] - pn2->_values[i];
 
 		cnt = res._values[i] ? 0 : cnt + 1;
 	}
@@ -821,7 +915,7 @@ void longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res)
 	res._sign = pn1->_sign;						// Sign is determined by the greater number
 	res._length -= cnt;							// Adjust the length, so leading zeroes will be trimmed out
 
-	return;
+	return bRes;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -829,7 +923,7 @@ void longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res)
 // Operator > for absolute values of the 2 numbers
 // Returns:
 // n1  > n2	-- 1
-// n2  < n2	-- 2
+// n1  < n2	-- 2
 // n1 == n2	-- 0
 int longNum::absValueIsLarger(const longNum &n1, const longNum &n2) const
 {
