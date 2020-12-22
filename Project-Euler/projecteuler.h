@@ -5505,13 +5505,38 @@ void func80()
 
 void func81()
 {
-	if(1)
+	if (0)
 	{
-		long lll = 9999999;
+		long lll = 33333;		// 186 --> 25.99 --> 22.2 --> 25.2 --> 24.5
+
+		size_t cnt = 0;
+
+		for (long i = -lll; i < lll; i++)
+		{
+			longNum n1(i);
+
+			for (long j = -lll; j < lll; j++)
+			{
+				if (n1 > j)
+				{
+					cnt++;
+				}
+			}
+		}
+
+		std::cout << " -- cnt = " << cnt << std::endl;
+
+		return;
+	}
+
+
+	if(0)
+	{
+		long lll = -99999999;
 
 		longNum n1(lll);
 
-		for (long i = lll; i > -9999999; i--)
+		for (long i = lll; i < 9999999; i++)
 		{
 			if (n1 != i)
 			{
@@ -5519,7 +5544,7 @@ void func81()
 				break;
 			}
 
-			--n1;
+			++n1;
 		}
 
 		return;
@@ -5545,7 +5570,7 @@ void func81()
 
 	size_t doStop = 0, answer = 0;
 
-	long N = 101;
+	long N = 1001;
 
 	for (long i = -N; i <= N && !doStop; i++)
 	{
@@ -5560,7 +5585,7 @@ void func81()
 				if (n3 != n1)
 				{
 					doStop = 1;
-					std::cout << " -- ERROR 1 in operator = " << std::endl;
+					std::cout << " -- ERROR 1 in operator = : " << i << " = " << j << std::endl;
 					break;
 				}
 
@@ -5569,7 +5594,7 @@ void func81()
 				if (n3 != i)
 				{
 					doStop = 1;
-					std::cout << " -- ERROR 2 in operator = " << std::endl;
+					std::cout << " -- ERROR 2 in operator = : " << i << " = " << j << std::endl;
 					break;
 				}
 

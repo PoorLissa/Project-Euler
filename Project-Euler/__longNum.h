@@ -325,7 +325,42 @@ bool longNum::operator ==(const longNum& other) const
 template <class Type>
 bool longNum::operator ==(const Type other) const
 {
+#if 0
+	// This one works ~13 times slower
 	return *this == longNum(other);
+#else
+	// Check sign and length first (max size_t is 18446744073709551615 ==> 20 digits max)
+	if (_sign != (other >= 0) || _length > 20u)
+		return false;
+
+	// Going to actually change const Type other, as it is passed by value and doesn't affect anything
+	Type* ptr = const_cast<Type*>(&other);
+	int len(0);
+
+	if (!_sign)
+		*ptr *= -1;
+
+	while (other)
+	{
+		if (_length == len)
+			return false;
+
+		if ((other % BASE) != (_values[len++]))
+			return false;
+
+		*ptr /= BASE;
+	}
+
+	if (_length != len)
+	{
+		if (len == 0 && !*this)							// If other == 0, len will be 0
+			return true;
+
+		return false;
+	}
+
+	return true;
+#endif
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -340,7 +375,7 @@ bool longNum::operator !=(const longNum &other) const
 template <class Type>
 bool longNum::operator !=(const Type other) const
 {
-	return *this != longNum(other);
+	return !(*this == other);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -376,13 +411,46 @@ bool longNum::operator >(const longNum &other) const
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: don't need to build new object longNum from 'other'. can be done faster. test it later
 template <class Type>
 bool longNum::operator >(const Type other) const
 {
-	longNum obj(other);
+#if 0
+	// ~7.6 times slower
+	return *this > longNum(other);
+#else
+	if ((_sign != (other >= 0)) || _length > 20u)
+		return _sign;
 
-	return *this > obj;
+	// Going to actually change const Type other, as it is passed by value and doesn't affect anything
+	Type* ptr = const_cast<Type*>(&other);
+	int len(0);
+	bool res(false);
+
+	if (!_sign)
+		*ptr *= -1;
+
+	while (other)
+	{
+		if (_length == len)
+			return !_sign;
+
+		if (_values[len] != other % BASE)
+			res = _values[len] > other % BASE ? _sign : !_sign;
+
+		*ptr /= BASE;
+		len++;
+	}
+
+	if (_length > len)
+	{
+		if (len == 0 && !*this)							// If other == 0, len will be 0
+			return false;
+
+		return _sign;
+	}
+
+	return res;
+#endif
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -978,6 +1046,7 @@ longNum& longNum::operator -=(const Type other)
 
 // -----------------------------------------------------------------------------------------------
 
+// This implementation is almost 2 times faster than standard "return *this += longNum(1l)"
 longNum& longNum::operator ++()
 {
 	if (_length)
