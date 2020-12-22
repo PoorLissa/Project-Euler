@@ -5494,8 +5494,6 @@ void func80()
 		doPrint(n4.get());
 
 		doPrint("");
-
-		doPrint(longNum::cnt);
 }
 
 #endif
@@ -5507,6 +5505,26 @@ void func80()
 
 void func81()
 {
+	if(1)
+	{
+		long lll = 9999999;
+
+		longNum n1(lll);
+
+		for (long i = lll; i > -9999999; i--)
+		{
+			if (n1 != i)
+			{
+				std::cout << " -- FAIL : " << n1.get() << " != " << i << std::endl;
+				break;
+			}
+
+			--n1;
+		}
+
+		return;
+	}
+
 #if 0
 	longNum n1(10l);
 	longNum n2( 5l);
@@ -5529,119 +5547,232 @@ void func81()
 
 	long N = 101;
 
-	for (long i = -N; i <= N; i++)
+	for (long i = -N; i <= N && !doStop; i++)
 	{
-		for (long j = -N; j <= N; j++)
+		for (long j = -N; j <= N && !doStop; j++)
 		{
-			if ((i == j) != (longNum(i) == longNum(j)))
+			// operator =
 			{
-				doStop = 1;
-				std::cout << " -- ERROR 1: " << i << " == " << j << std::endl;
-				break;
-			}
+				longNum n1(i), n2(i), n3;
 
-			if ((i == j) != (longNum(i) == j))
-			{
-				doStop = 1;
-				std::cout << " -- ERROR 2: " << i << " == " << j << std::endl;
-				break;
-			}
+				n3 = n1;
 
-			// --------------------------------------------------------------------------
+				if (n3 != n1)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 1 in operator = " << std::endl;
+					break;
+				}
 
-			if ((i != j) != (longNum(i) != longNum(j)))
-			{
-				doStop = 1;
-				std::cout << " -- ERROR 1: " << i << " != " << j << std::endl;
-				break;
-			}
+				n3 = i;
 
-			if ((i != j) != (longNum(i) != j))
-			{
-				doStop = 1;
-				std::cout << " -- ERROR 2: " << i << " != " << j << std::endl;
-				break;
-			}
+				if (n3 != i)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 2 in operator = " << std::endl;
+					break;
+				}
 
-			// --------------------------------------------------------------------------
-
-			if ((i > j) != (longNum(i) > longNum(j)))
-			{
-				doStop = 1;
-				std::cout << " -- ERROR 1: " << i << " > " << j << std::endl;
-				break;
-			}
-
-			if ((i > j) != (longNum(i) > j))
-			{
-				doStop = 1;
-				std::cout << " -- ERROR 2: " << i << " > " << j << std::endl;
-				break;
+				if (n1 != n2)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 3 in operator = : const values changed" << std::endl;
+					break;
+				}
 			}
 
 			// --------------------------------------------------------------------------
 
-			if ((i >= j) != (longNum(i) >= longNum(j)))
+			// operator ==
 			{
-				doStop = 1;
-				std::cout << " -- ERROR 1: " << i << " >= " << j << std::endl;
-				break;
-			}
+				longNum n1(i), n2(j);
 
-			if ((i >= j) != (longNum(i) >= j))
-			{
-				doStop = 1;
-				std::cout << " -- ERROR 2: " << i << " >= " << j << std::endl;
-				break;
-			}
+				if ((i == j) != (n1 == n2))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 1 in operator == : " << i << " == " << j << std::endl;
+					break;
+				}
 
-			// --------------------------------------------------------------------------
+				if ((i == j) != (n1 == j))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 2 in operator == : " << i << " == " << j << std::endl;
+					break;
+				}
 
-			if ((i < j) != (longNum(i) < longNum(j)))
-			{
-				doStop = 1;
-				std::cout << " -- ERROR 1: " << i << " < " << j << std::endl;
-				break;
-			}
-
-			if ((i < j) != (longNum(i) < j))
-			{
-				doStop = 1;
-				std::cout << " -- ERROR 2: " << i << " < " << j << std::endl;
-				break;
+				if (n1 != i || n2 != j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 3 in operator == : const values changed" << std::endl;
+					break;
+				}
 			}
 
 			// --------------------------------------------------------------------------
 
-			if ((i <= j) != (longNum(i) <= longNum(j)))
+			// operator !=
 			{
-				doStop = 1;
-				std::cout << " -- ERROR 1: " << i << " <= " << j << std::endl;
-				break;
+				longNum n1(i), n2(j);
+
+				if ((i != j) != (n1 != n2))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 1 in operator != : " << i << " != " << j << std::endl;
+					break;
+				}
+
+				if ((i != j) != (n1 != j))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 2 in operator != : " << i << " != " << j << std::endl;
+					break;
+				}
+
+				if (n1 != i || n2 != j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 3 in operator != : const values changed" << std::endl;
+					break;
+				}
 			}
 
-			if ((i <= j) != (longNum(i) <= j))
-			{ 
-				doStop = 1;
-				std::cout << " -- ERROR 2: " << i << " <= " << j << std::endl;
-				break;
+			// --------------------------------------------------------------------------
+
+			// operator >
+			{
+				longNum n1(i), n2(j);
+
+				if ((i > j) != (n1 > n2))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 1 in operator > : " << i << " > " << j << std::endl;
+					break;
+				}
+
+				if ((i > j) != (n1 > j))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 2 in operator > : " << i << " > " << j << std::endl;
+					break;
+				}
+
+				if (n1 != i || n2 != j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 3 in operator > : const values changed" << std::endl;
+					break;
+				}
+			}
+
+			// --------------------------------------------------------------------------
+
+			// operator >=
+			{
+				longNum n1(i), n2(j);
+
+				if ((i >= j) != (n1 >= n2))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 1 in operator >= : " << i << " > " << j << std::endl;
+					break;
+				}
+
+				if ((i >= j) != (n1 >= j))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 2 in operator >= : " << i << " > " << j << std::endl;
+					break;
+				}
+
+				if (n1 != i || n2 != j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 3 in operator >= : const values changed" << std::endl;
+					break;
+				}
+			}
+
+			// --------------------------------------------------------------------------
+
+			// operator <
+			{
+				longNum n1(i), n2(j);
+
+				if ((i < j) != (n1 < n2))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 1 in operator < : " << i << " < " << j << std::endl;
+					break;
+				}
+
+				if ((i < j) != (n1 < j))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 2 in operator < : " << i << " < " << j << std::endl;
+					break;
+				}
+
+				if (n1 != i || n2 != j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 3 in operator < : const values changed" << std::endl;
+					break;
+				}
+			}
+
+			// --------------------------------------------------------------------------
+
+			// operator <=
+			{
+				longNum n1(i), n2(j);
+
+				if ((i <= j) != (n1 <= n2))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 1 in operator <= : " << i << " <= " << j << std::endl;
+					break;
+				}
+
+				if ((i <= j) != (n1 <= j))
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 2 in operator <= : " << i << " <= " << j << std::endl;
+					break;
+				}
+
+				if (n1 != i || n2 != j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 3 in operator <= : const values changed" << std::endl;
+					break;
+				}
 			}
 
 			// --------------------------------------------------------------------------
 
 			// operator +
 			{
-				if ( !(longNum(i) + longNum(j) == (i + j)) )
+				longNum n1(i), n2(j);
+
+				if ( (n1 + n2) != (i + j) )
 				{
 					doStop = 1;
-					std::cout << " -- ERROR 1: " << i << " + " << j << std::endl;
+					std::cout << " -- ERROR 1 in operator + : " << i << " + " << j << std::endl;
 					break;
 				}
 
-				if ( !(longNum(i) + j == (i + j)) )
+				if ( !(n1 + j == (i + j)) )
 				{
 					doStop = 1;
-					std::cout << " -- ERROR 2: " << i << " + " << j << std::endl;
+					std::cout << " -- ERROR 2 in operator + : " << i << " + " << j << std::endl;
+					break;
+				}
+
+				if (n1 != i || n2 != j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 3 in operator + : const values changed" << std::endl;
 					break;
 				}
 			}
@@ -5650,35 +5781,43 @@ void func81()
 
 			// operator +=
 			{
-				longNum n1(i), n2(j), n3(i);
+				longNum n1(i), n2(j);
 
 				// operator +=
 				n1 += n2;
 
-				if ( !(n1 == (i + j)) || !(n2 == j) )
+				if (n1 != i + j)
 				{
 					doStop = 1;
-					std::cout << " -- ERROR 1: " << i << " += " << j << std::endl;
+					std::cout << " -- ERROR 1 in operator += : " << i << " += " << j << " ::: Expected " << (i+j) << ", got " << n1.get() << std::endl;
+					break;
+				}
+
+				if (n2 != j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 2 in operator += : const values changed" << std::endl;
 					break;
 				}
 
 				// operator += -- move semantics
 				n2 += longNum(i);
 
-				if ( !(n2 == (i + j)) )
+				if (n2 != i + j)
 				{
 					doStop = 1;
-					std::cout << " -- ERROR 2: " << i << " += " << j << std::endl;
+					std::cout << " -- ERROR 3 in operator += " << std::endl;
 					break;
 				}
 
 				// operator += -- templated
-				n3 += j;
+				n1 += i;
+				n1 += j;
 
-				if (!(n3 == (i + j)))
+				if (n1 != i + i + j + j)
 				{
 					doStop = 1;
-					std::cout << " -- ERROR 3: " << i << " += " << j << std::endl;
+					std::cout << " -- ERROR 4 in operator += " << std::endl;
 					break;
 				}
 			}
@@ -5687,17 +5826,26 @@ void func81()
 
 			// operator -
 			{
-				if ( !(longNum(i) - longNum(j) == (i - j)) )
+				longNum n1(i), n2(j);
+
+				if (n1 - n2 != i - j)
 				{
 					doStop = 1;
-					std::cout << " -- ERROR 1: " << i << " - " << j << std::endl;
+					std::cout << " -- ERROR 1 in operator - : " << i << " - " << j << std::endl;
 					break;
 				}
 
-				if (!(longNum(i) - j == (i - j)))
+				if (n1 - j != i - j)
 				{
 					doStop = 1;
-					std::cout << " -- ERROR 2: " << i << " - " << j << std::endl;
+					std::cout << " -- ERROR 2 in operator - : " << i << " - " << j << std::endl;
+					break;
+				}
+
+				if (n1 != i || n2 != j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 3 in operator - : const values changed" << std::endl;
 					break;
 				}
 			}
@@ -5706,7 +5854,45 @@ void func81()
 
 			// operator -=
 			{
-			
+				longNum n1(i), n2(j);
+
+				// operator -=
+				n1 -= n2;
+
+				if (n1 != i - j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 1 in operator -= : " << i << " -= " << j << " ::: Expected " << (i - j) << ", got " << n1.get() << std::endl;
+					break;
+				}
+
+				if (n2 != j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 2 in operator -= : const values changed" << std::endl;
+					break;
+				}
+
+				// operator -= -- move semantics
+				n2 -= longNum(i);
+
+				if (n2 != j - i)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 3 in operator -= " << std::endl;
+					break;
+				}
+
+				// operator -= -- templated
+				n1 -= i;
+				n1 -= j;
+
+				if (n1 != i - i - j - j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 4 in operator += " << std::endl;
+					break;
+				}
 			}
 
 			// --------------------------------------------------------------------------
@@ -5718,21 +5904,40 @@ void func81()
 				if ((n1 && n2) != (i && j) || (n1 || n2) != (i || j))
 				{
 					doStop = 1;
-					std::cout << " -- ERROR 1: " << i << " bool " << j << std::endl;
+					std::cout << " -- ERROR 1 in operator bool() : " << i << " bool " << j << std::endl;
 					break;
 				}
 
 				if (!n1 != !i)
 				{
 					doStop = 1;
-					std::cout << " -- ERROR 2: " << i << " bool " << j << std::endl;
+					std::cout << " -- ERROR 2 in operator bool() : " << i << " bool " << j << std::endl;
 					break;
 				}
 
 				if (!n2 != !j)
 				{
 					doStop = 1;
-					std::cout << " -- ERROR 3: " << i << " bool " << j << std::endl;
+					std::cout << " -- ERROR 3 in operator bool() : " << i << " bool " << j << std::endl;
+					break;
+				}
+
+				if (n1 != i || n2 != j)
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 4 in operator bool() : const values changed" << std::endl;
+					break;
+				}
+			}
+
+			// std::string get() const
+			{
+				longNum n1(i), n2(j);
+
+				if (std::to_string(i) != n1.get() || std::to_string(j) != n2.get())
+				{
+					doStop = 1;
+					std::cout << " -- ERROR 1 in std::string get()" << std::endl;
 					break;
 				}
 			}
