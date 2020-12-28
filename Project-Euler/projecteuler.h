@@ -5505,9 +5505,30 @@ void func80()
 
 void func81()
 {
-	if (0)
+	short* ptr = nullptr;
+
+	size_t size1 = sizeof(*ptr);
+
+	size_t size2 = sizeof( ptr);
+
+
+#if 1
+
+	longNum nnn(-1000l);
+
+	longNum asd = nnn + (1001l);
+
+	//longNum asd = nnn + (2l);
+
+	doPrint(asd.get());
+
+	return;
+
+#endif
+
+	if ( 0 )
 	{
-		long lll = 33333;		// 186 --> 25.99 --> 22.2 --> 25.2 --> 24.5
+		long lll = 33333;		// 184 --> 
 
 		size_t cnt = 0;
 
@@ -5517,7 +5538,7 @@ void func81()
 
 			for (long j = -lll; j < lll; j++)
 			{
-				if (n1 > j)
+				if (n1 <= j)
 				{
 					cnt++;
 				}

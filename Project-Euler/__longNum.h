@@ -79,18 +79,14 @@ class longNum {
 		// Getters
 		std::string get() const;
 
-		void aaa()
-		{
-			for (size_t i = 0; i < _length; i++)
-				std::cout << " " << _values[i];
-		}
-
-
 	private:
-		void   add2positive	(const longNum &, const longNum &, longNum &)	const;			// Add 2 positive numbers
-		bool subtr2positive	(const longNum &, const longNum &, longNum &)	const;			// Subtract 2 positive numbers
+		void   add2positive	(const longNum &, const longNum &, longNum &)	const;					// Add 2 positive numbers
+		bool subtr2positive	(const longNum &, const longNum &, longNum &)	const;					// Subtract 2 positive numbers
 
-		int absValueIsLarger(const longNum &, const longNum &)				const;			// Operator > for absolute values of the 2 numbers
+		template <class Type> void   add2positive(const longNum &, const Type, longNum &) const;
+		template <class Type> bool subtr2positive(const longNum &, const Type, longNum &) const;
+
+		int absValueIsLarger(const longNum &, const longNum &) const;								// Operator > for absolute values of the 2 numbers
 
 	private:
 		digitType*	_values;
@@ -443,7 +439,7 @@ bool longNum::operator >(const Type other) const
 
 	if (_length > len)
 	{
-		if (len == 0 && !*this)							// If other == 0, len will be 0
+		if (len == 0 && !*this)
 			return false;
 
 		return _sign;
@@ -486,13 +482,46 @@ bool longNum::operator >=(const longNum &other) const
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: don't need to build new object longNum from 'other'. can be done faster. test it later
 template <class Type>
 bool longNum::operator >=(const Type other) const
 {
-	longNum obj(other);
+#if 0
+	// ~7.9 times slower
+	return *this >= longNum(other);
+#else
+	if ((_sign != (other >= 0)) || _length > 20u)
+		return _sign;
 
-	return *this >= obj;
+	// Going to actually change const Type other, as it is passed by value and doesn't affect anything
+	Type* ptr = const_cast<Type*>(&other);
+	int len(0);
+	bool res(true);
+
+	if (!_sign)
+		*ptr *= -1;
+
+	while (other)
+	{
+		if (_length == len)
+			return !_sign;
+
+		if (_values[len] != other % BASE)
+			res = _values[len] > other % BASE ? _sign : !_sign;
+
+		*ptr /= BASE;
+		len++;
+	}
+
+	if (_length > len)
+	{
+		if (len == 0 && !*this)
+			return true;
+
+		return _sign;
+	}
+
+	return res;
+#endif
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -528,13 +557,46 @@ bool longNum::operator <(const longNum &other) const
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: don't need to build new object longNum from 'other'. can be done faster. test it later
 template <class Type>
 bool longNum::operator <(const Type other) const
 {
-	longNum obj(other);
+#if 0
+	// 7.7 times slower
+	return *this < longNum(other);
+#else
+	if ((_sign != (other >= 0)) || _length > 20u)
+		return !_sign;
 
-	return *this < obj;
+	// Going to actually change const Type other, as it is passed by value and doesn't affect anything
+	Type* ptr = const_cast<Type*>(&other);
+	int len(0);
+	bool res(false);
+
+	if (!_sign)
+		*ptr *= -1;
+
+	while (other)
+	{
+		if (_length == len)
+			return _sign;
+
+		if (_values[len] != other % BASE)
+			res = _values[len] < other % BASE ? _sign : !_sign;
+
+		*ptr /= BASE;
+		len++;
+	}
+
+	if (_length > len)
+	{
+		if (len == 0 && !*this)
+			return false;
+
+		return !_sign;
+	}
+
+	return res;
+#endif
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -570,13 +632,46 @@ bool longNum::operator <=(const longNum &other) const
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: don't need to build new object longNum from 'other'. can be done faster. test it later
 template <class Type>
 bool longNum::operator <=(const Type other) const
 {
-	longNum obj(other);
+#if 0
+	// 7.5 times slower
+	return *this <= longNum(other);
+#else
+	if ((_sign != (other >= 0)) || _length > 20u)
+		return !_sign;
 
-	return *this <= obj;
+	// Going to actually change const Type other, as it is passed by value and doesn't affect anything
+	Type* ptr = const_cast<Type*>(&other);
+	int len(0);
+	bool res(true);
+
+	if (!_sign)
+		*ptr *= -1;
+
+	while (other)
+	{
+		if (_length == len)
+			return _sign;
+
+		if (_values[len] != other % BASE)
+			res = _values[len] < other % BASE ? _sign : !_sign;
+
+		*ptr /= BASE;
+		len++;
+	}
+
+	if (_length > len)
+	{
+		if (len == 0 && !*this)
+			return true;
+
+		return !_sign;
+	}
+
+	return res;
+#endif
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -604,9 +699,23 @@ longNum longNum::operator +(const longNum &other) const
 template <class Type>
 longNum longNum::operator +(const Type other) const
 {
-	longNum obj(other);
+#if 0
+	return std::move(*this + longNum(other));
+#else
+	longNum res;
 
-	return std::move(*this + obj);
+	if (_sign == (other >= 0))
+	{
+		add2positive(*this, other, res);
+		res._sign = _sign;
+	}
+	else
+	{
+		subtr2positive(*this, other, res);
+	}
+
+	return std::move(res);
+#endif
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -1311,7 +1420,73 @@ void longNum::add2positive(const longNum &n1, const longNum &n2, longNum &res) c
 
 // -----------------------------------------------------------------------------------------------
 
-// Subtract 2 positive numbers
+// Pre-requirement: res._values is not allocated yet
+template <class Type>
+void longNum::add2positive(const longNum &n1, const Type n2, longNum &res) const
+{
+	if (n1._length > 20u)
+	{
+		res._length = n1._length;
+	}
+	else
+	{
+		size_t len(sizeof(Type));
+
+		if (len < 8)
+		{
+			len = len < 4 ? 5 : 10;
+		}
+		else
+		{
+			len = 20;
+		}
+
+		res._length = (n1._length > len ? n1._length : len);
+	}
+
+#if defined _TRACE_
+	std::cout << " ---> Alloc" << std::endl;
+#endif
+
+	Type* ptr = const_cast<Type*>(&n2);
+
+	if (!n1._sign)
+		*ptr *= -1;
+
+	res._values = new digitType[res._length+1];
+
+	digitType nRes = 0;
+	res._length = 0;
+
+	while(res._length < n1._length || n2)
+	{
+		if (res._length < n1._length)
+		{
+			nRes += n1._values[res._length];
+		}
+
+		if (n2)
+		{
+			nRes += n2 % BASE;
+			*ptr /= BASE;
+		}
+
+		res._values[res._length++] = nRes % BASE;
+
+		nRes = (nRes >= BASE) ? 1 : 0;
+	}
+
+	if (nRes)
+	{
+		res._values[res._length++] = 1;
+	}
+
+	return;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Subtracts 2 positive numbers
 // Returns:
 //	false : n1 >= n2
 //	true  : n1 <  n2
@@ -1394,6 +1569,106 @@ bool longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res)
 	res._length -= cnt;							// Adjust the length, so leading zeroes will be trimmed out
 
 	return bRes;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Subtracts 2 positive numbers
+// Returns:
+//	false : n1 >= n2
+//	true  : n1 <  n2
+template <class Type>
+bool longNum::subtr2positive(const longNum &n1, const Type n2, longNum &res) const
+{
+	// To subtract, we basically need to know what number is greater
+	// Here, we don't know that
+	// Let's try to do this anyway
+
+	if (n1._length > 20u)
+	{
+		res._length = n1._length;
+	}
+	else
+	{
+		size_t len(sizeof(Type));
+
+		if (len < 8)
+		{
+			len = len < 4 ? 5 : 10;
+		}
+		else
+		{
+			len = 20;
+		}
+
+		res._length = (n1._length > len ? n1._length : len);
+	}
+
+#if defined _TRACE_
+	std::cout << " ---> Alloc" << std::endl;
+#endif
+
+	Type* ptr = const_cast<Type*>(&n2);
+
+Type asdasdasd = n2;
+
+	res._values = new digitType[res._length];
+
+	digitType nRes = 0, nNext = 0;
+	res._length = 0;
+	size_t cnt = 0;
+
+	while (res._length < n1._length && n2)
+	{
+		nRes = n1._values[res._length] + nNext;
+
+		nRes -= n2 % BASE;
+		*ptr /= BASE;
+
+		if (nRes < 0)
+		{
+			nRes += 10;
+			nNext = -1;
+		}
+
+		res._values[res._length] = nRes;
+		cnt = res._values[res._length++] ? 0 : cnt + 1;
+	}
+
+	if (nNext < 0)
+	{
+		int a = 1;
+	}
+
+	if (!n2)
+	{
+		while (res._length < n1._length)
+		{
+			res._values[res._length] = n1._values[res._length] + nNext;
+
+			if (res._values[res._length] < 0)
+			{
+				res._values[res._length] += 10;
+				nNext = -1;
+			}
+
+			cnt = res._values[res._length] ? 0 : cnt + 1;
+			res._length++;
+		}
+
+		if (res._length == cnt)
+		{
+			res._length = 1;
+			res._sign = POS;
+		}
+		else
+		{
+			res._length -= cnt;
+			res._sign = n1._sign;
+		}
+	}
+
+	return true;
 }
 
 // -----------------------------------------------------------------------------------------------
