@@ -5505,90 +5505,70 @@ void func80()
 
 void func81()
 {
-	short* ptr = nullptr;
-
-	size_t size1 = sizeof(*ptr);
-
-	size_t size2 = sizeof( ptr);
-
-
-#if 1
-
-	longNum nnn(-1000l);
-
-	longNum asd = nnn + (1001l);
-
-	//longNum asd = nnn + (2l);
-
-	doPrint(asd.get());
-
-	return;
-
-#endif
-
 	if ( 0 )
 	{
-		long lll = 33333;		// 184 --> 
+		doPrint("[] - []");
+		longNum n01("533333333333333333333");
+		longNum n02("311111111111111111111");
+		longNum res = n01 - n02;
+		doPrint(n01.get());
+		doPrint(n02.get());
+		doPrint(res.get());
+		doPrint("");
 
-		size_t cnt = 0;
+		doPrint("[] - size_t");
+		longNum n03("533333333333333333333");
+		longNum n04("11111111111111111111");
+		res = n03 - n04;
+		doPrint(n03.get());
+		doPrint(n04.get());
+		doPrint(res.get());
+		doPrint("");
 
-		for (long i = -lll; i < lll; i++)
-		{
-			longNum n1(i);
+		doPrint("size_t - [] -- 1");
+		longNum n05("11111111111111111111");
+		longNum n06("533333333333333333333");
+		res = n05 - n06;
+		doPrint(n05.get());
+		doPrint(n06.get());
+		doPrint(res.get());
+		doPrint("");
 
-			for (long j = -lll; j < lll; j++)
-			{
-				if (n1 <= j)
-				{
-					cnt++;
-				}
-			}
-		}
+		doPrint("size_t - [] -- 2");
+		longNum n05_2("18446744073709551615");
+		longNum n06_2("18446744073709551617");
+		res = n05_2 - n06_2;
+		doPrint(n05_2.get());
+		doPrint(n06_2.get());
+		doPrint(res.get());
+		doPrint("");
 
-		std::cout << " -- cnt = " << cnt << std::endl;
+		doPrint("size_t - size_t");
+		longNum n07("11111111111111110111");
+		longNum n08("11111111111111111111");
+		res = n07 - n08;
+		doPrint(n07.get());
+		doPrint(n08.get());
+		doPrint(res.get());
+		doPrint("");
+
+/*
+		longNum n1("+184467440737095516151");
+		longNum n2("-184467440737095516152");
+*/
+
+//		longNum n1("18446744073709551615");
+//		longNum n2("18446744073709551617");
+
+/*
+		wrong sign here :( --- goes to line 1999
+		need to make _length unsigned short --- then i'll be able to test 'long' numbers uisng greater standard types
+*/
 
 		return;
 	}
 
-
-	if(0)
-	{
-		long lll = -99999999;
-
-		longNum n1(lll);
-
-		for (long i = lll; i < 9999999; i++)
-		{
-			if (n1 != i)
-			{
-				std::cout << " -- FAIL : " << n1.get() << " != " << i << std::endl;
-				break;
-			}
-
-			++n1;
-		}
-
-		return;
-	}
-
-#if 0
-	longNum n1(10l);
-	longNum n2( 5l);
-
-	longNum n3 = n1 - n2;
-
-	std::cout << " res = " << n3.get() << std::endl;
-
-	longNum n4(-10l);
-	longNum n5( -5l);
-
-	longNum n6 = n4 - n5;
-
-	std::cout << " res = " << n6.get() << std::endl;
-
-	return;
-#endif
-
+#if 1
 	size_t doStop = 0, answer = 0;
 
 	long N = 1001;
@@ -5880,7 +5860,7 @@ void func81()
 					std::cout << " -- ERROR 1 in operator - : " << i << " - " << j << std::endl;
 					break;
 				}
-
+/*
 				if (n1 - j != i - j)
 				{
 					doStop = 1;
@@ -5894,10 +5874,11 @@ void func81()
 					std::cout << " -- ERROR 3 in operator - : const values changed" << std::endl;
 					break;
 				}
+*/
 			}
 
 			// --------------------------------------------------------------------------
-
+#if 0
 			// operator -=
 			{
 				longNum n1(i), n2(j);
@@ -5987,9 +5968,10 @@ void func81()
 					break;
 				}
 			}
+#endif
 		}
 	}
-
+#endif
 	std::cout << " errors: " << answer << std::endl;
 
 	validateResult(answer, doStop);

@@ -6,7 +6,13 @@
 
 #include <string>
 
-//#define _TRACE_
+// -----------------------------------------------------------------------------------------------
+
+#pragma warning (disable:4146)		// Search for 'pragma warning (disable:4146)' to find code parts that need this pragma
+
+// -----------------------------------------------------------------------------------------------
+
+#define _TRACE_
 
 // -----------------------------------------------------------------------------------------------
 
@@ -14,6 +20,12 @@ constexpr bool POS = true;
 constexpr bool NEG = false;
 
 // -----------------------------------------------------------------------------------------------
+
+// TODO
+/*
+	1. Introduce Capacity
+	2. 
+*/
 
 class longNum {
 
@@ -33,6 +45,7 @@ class longNum {
 		longNum(	  longNum &&) noexcept;
 		longNum(const size_t);
 		longNum(const long);
+		longNum(const int);
 
 
 		// Operators
@@ -80,6 +93,8 @@ class longNum {
 		std::string get() const;
 
 	private:
+		void convertToSizeT_ifPossible();															// Tries to store the number as size_t
+
 		void   add2positive	(const longNum &, const longNum &, longNum &)	const;					// Add 2 positive numbers
 		bool subtr2positive	(const longNum &, const longNum &, longNum &)	const;					// Subtract 2 positive numbers
 
@@ -88,47 +103,117 @@ class longNum {
 
 		int absValueIsLarger(const longNum &, const longNum &) const;								// Operator > for absolute values of the 2 numbers
 
+		void add2positive_1(const longNum&, const longNum&, longNum&) const;						// Both numbers are long versions
+		void add2positive_2(const longNum&, const longNum&, longNum&) const;						// 
+		void add2positive_3(const longNum&, const size_t,   longNum&) const;						//
+
+		bool subtr2positive_1(const longNum&, const longNum&, longNum&) const;						// Both numbers are long versions
+		bool subtr2positive_2(const longNum&, const longNum&, longNum&) const;						//
+		bool subtr2positive_3(const longNum&, const size_t,   longNum&) const;						//
+
+		void opPlusEqual_1(longNum&, const longNum&) const;											// operator += helper 1
+		void opPlusEqual_2(longNum&, const longNum&);												// operator += helper 2
+		void opPlusEqual_3(longNum&, const longNum&);												// operator += helper 3
+		void opPlusEqual_4(longNum&, const longNum&);												// operator += helper 4
+
 	private:
 		digitType*	_values;
 		size_t		_length;
 		bool		_sign;
+
 };
 
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------
 
-longNum::longNum(const char *str) : _length(strlen(str)), _sign(POS)
+longNum::longNum(const char *str) : _values(nullptr), _length(strlen(str)), _sign(POS)
 {
-	#if defined _TRACE_
-		std::cout << " ---> Alloc" << std::endl;
-	#endif
-
-	if (_length && str[0] == '-')
+	// Get sign and skip first symbol
+	if (_length)
 	{
-		_sign = NEG;
-		_length--;
-		str++;
+		if (str[0] == '-' || str[0] == '+')
+		{
+			if(str[0] == '-')
+				_sign = NEG;
+
+			_length--;
+			str++;
+		}
 	}
 
-	_values = new digitType[_length];
-
-	for (size_t i = 0; i < _length; i++)
+	if (_length >= 20u)
 	{
-		_values[_length - i - 1] = str[i] - 48;
+		// Still might be less than size_t(-1)
+		if (_length == 20u)
+		{
+			size_t tmp = static_cast<size_t>(1e19), Max(-1);
+			const char* STR = str;
+
+			while (tmp)
+			{
+				size_t digit1 = static_cast<size_t>(STR++[0]) - 48;		// our number
+				size_t digit2 = (Max/tmp) % BASE;						// max size_t number
+
+				if (digit1 > digit2)
+				{
+					_values = new digitType[_length];
+					break;
+				}
+
+				if (digit1 < digit2)
+				{
+					break;
+				}
+
+				tmp /= BASE;
+			}
+		}
+		else
+		{
+			_values = new digitType[_length];
+		}
+
+		// More than size_t(-1), store the number as array
+		if (_values)
+		{
+#if defined _TRACE_
+			std::cout << " ---> Alloc (Constructor(const char*)) : " << str << std::endl;
+#endif
+
+			for (size_t i = 0; i < _length; i++)
+				_values[_length - i - 1] = str[i] - 48;
+		}
+	}
+
+	// Less than size_t(-1), store the number as size_t
+	if (!_values)
+	{
+#if defined _TRACE_
+		std::cout << " ---> Constructor(const char*) : store as size_t : " << str << std::endl;
+#endif
+
+		size_t tmp(0u);
+
+		for (size_t i = 0; i < _length; i++)
+			tmp = tmp * BASE + static_cast<size_t>(str[i]) - 48;
+
+		_length = tmp;
 	}
 }
 
 // -----------------------------------------------------------------------------------------------
 
-longNum::longNum(const longNum& other) : _length(other._length)
+longNum::longNum(const longNum& other) : _length(other._length), _sign(other._sign), _values(nullptr)
 {
+	if (other._values)
+	{
 #if defined _TRACE_
-	std::cout << " ---> Alloc" << std::endl;
+		std::cout << " ---> Alloc (Copy Constructor)" << std::endl;
 #endif
-	_values = new digitType[_length];
-	memcpy(_values, other._values, sizeof(digitType) * _length);
-	_sign = other._sign;
+		_values = new digitType[_length];
+		memcpy(_values, other._values, sizeof(digitType) * _length);
+	}
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -145,82 +230,32 @@ longNum::longNum(longNum&& other) noexcept
 
 // -----------------------------------------------------------------------------------------------
 
-longNum::longNum(size_t num) : _length(0u), _sign(POS)
+longNum::longNum(const size_t num) : _length(num), _sign(POS), _values(nullptr)
 {
-	size_t i = 0, tmp(num);
+	// When constructing longNum from size_t, the new value will always be stored as size_t
+}
 
-	if (num == 0)
+// -----------------------------------------------------------------------------------------------
+
+longNum::longNum(const long num) : _length(num), _sign(POS), _values(nullptr)
+{
+	// When constructing longNum from long, the new value will always be stored as size_t
+	if (num < 0)
 	{
-#if defined _TRACE_
-		std::cout << " ---> Alloc" << std::endl;
-#endif
-		_length = 1;
-		_values = new digitType[_length];
-		_values[0] = 0u;
-	}
-	else
-	{
-		while (tmp && ++_length)
-			tmp /= BASE;
-
-		if (_length)
-		{
-#if defined _TRACE_
-			std::cout << " ---> Alloc" << std::endl;
-#endif
-			_values = new digitType[_length];
-		}
-
-		while (num)
-		{
-			digitType digit = num % BASE;
-			_values[i++] = digit;
-			num /= BASE;
-		}
+		_sign   = NEG;
+		_length = -num;
 	}
 }
 
 // -----------------------------------------------------------------------------------------------
 
-longNum::longNum(long num) : _length(0u), _sign(POS)
+longNum::longNum(const int num) : _length(num), _sign(POS), _values(nullptr)
 {
-	size_t i = 0;
-	long tmp(num);
-
-	if (num == 0)
+	// When constructing longNum from int, the new value will always be stored as size_t
+	if (num < 0)
 	{
-#if defined _TRACE_
-		std::cout << " ---> Alloc" << std::endl;
-#endif
-		_length = 1;
-		_values = new digitType[_length];
-		_values[0] = 0u;
-	}
-	else
-	{
-		if (num < 0)
-		{
-			_sign = NEG;
-			num = -num;
-		}
-
-		while (tmp && ++_length)
-			tmp /= BASE;
-
-		if (_length)
-		{
-#if defined _TRACE_
-			std::cout << " ---> Alloc" << std::endl;
-#endif
-			_values = new digitType[_length];
-		}
-
-		while (num)
-		{
-			digitType digit = num % BASE;
-			_values[i++] = digit;
-			num /= BASE;
-		}
+		_sign   = NEG;
+		_length = -num;
 	}
 }
 
@@ -242,28 +277,40 @@ longNum& longNum::operator =(const longNum& other)
 {
 	if (this != &other)
 	{
-		if (_values)
+		_length = other._length;
+		_sign   = other._sign;
+
+		if (other._values)
 		{
-			// Will reuse the memory if the length is the same
-			if (_length != other._length)
+			if (this->_values)
+			{
+				// Will reuse the memory if this.length is the same
+				if (_length != other._length)
+				{
+					delete[] _values;
+					_values = nullptr;
+				}
+			}
+
+			if (!this->_values)
+			{
+#if defined _TRACE_
+				std::cout << " ---> Alloc (operator =)" << std::endl;
+#endif
+				_values = new digitType[_length];
+			}
+
+			memcpy(_values, other._values, sizeof(digitType) * _length);
+		}
+		else
+		{
+			// New value will be stored as size_t
+			if (this->_values)
 			{
 				delete[] _values;
 				_values = nullptr;
 			}
 		}
-
-		_length = other._length;
-		_sign   = other._sign;
-
-		if (!_values)
-		{
-#if defined _TRACE_
-			std::cout << " ---> Alloc" << std::endl;
-#endif
-			_values = new digitType[_length];
-		}
-
-		memcpy(_values, other._values, sizeof(digitType) * _length);
 	}
 
 	return *this;
@@ -281,12 +328,12 @@ longNum& longNum::operator =(longNum&& other) noexcept
 		// Steal the data
 		_length = std::move(other._length);
 		_values = std::move(other._values);
-
-		_sign = other._sign;
+		_sign   = std::move(other._sign);
 
 		// Leave the other object in empty state
 		other._length = 0;
 		other._values = nullptr;
+		other._sign   = POS;
 	}
 
 	return *this;
@@ -304,13 +351,19 @@ longNum& longNum::operator =(const Type other)
 
 bool longNum::operator ==(const longNum& other) const
 {
-	if (_length == other._length && _sign == other._sign)
+	if (bool(_values) == bool(other._values))
 	{
-		for (size_t i = 0; i < _length; ++i)
-			if (_values[i] != other._values[i])
-				return false;
+		if (_length == other._length && _sign == other._sign)
+		{
+			if (_values)
+			{
+				for (size_t i = 0; i < _length; ++i)
+					if (_values[i] != other._values[i])
+						return false;
+			}
 
-		return true;
+			return true;
+		}
 	}
 
 	return false;
@@ -318,45 +371,14 @@ bool longNum::operator ==(const longNum& other) const
 
 // -----------------------------------------------------------------------------------------------
 
+// TODO: doesnt work with size_t somehow. check this later
 template <class Type>
 bool longNum::operator ==(const Type other) const
 {
-#if 0
-	// This one works ~13 times slower
-	return *this == longNum(other);
-#else
-	// Check sign and length first (max size_t is 18446744073709551615 ==> 20 digits max)
-	if (_sign != (other >= 0) || _length > 20u)
+	if (_values || _sign != (other >= 0))
 		return false;
 
-	// Going to actually change const Type other, as it is passed by value and doesn't affect anything
-	Type* ptr = const_cast<Type*>(&other);
-	int len(0);
-
-	if (!_sign)
-		*ptr *= -1;
-
-	while (other)
-	{
-		if (_length == len)
-			return false;
-
-		if ((other % BASE) != (_values[len++]))
-			return false;
-
-		*ptr /= BASE;
-	}
-
-	if (_length != len)
-	{
-		if (len == 0 && !*this)							// If other == 0, len will be 0
-			return true;
-
-		return false;
-	}
-
-	return true;
-#endif
+	return _length == static_cast<size_t>(_sign ? other : -other);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -378,27 +400,30 @@ bool longNum::operator !=(const Type other) const
 
 bool longNum::operator >(const longNum &other) const
 {
-	if(_sign > other._sign)
-		return true;
-
-	if (_sign < other._sign)
-		return false;
-
-	if (_length > other._length)
-		return _sign;
-
-	if (_length < other._length)
-		return !_sign;
-
-	if (_length)
+	if (bool(_values) == bool(other._values))
 	{
-		for (size_t i = _length-1; i != size_t(-1); --i)
-		{
-			if (_values[i] > other._values[i])
-				return _sign;
+		if (_sign > other._sign)
+			return true;
 
-			if (_values[i] < other._values[i])
-				return !_sign;
+		if (_sign < other._sign)
+			return false;
+
+		if (_length > other._length)
+			return _sign;
+
+		if (_length < other._length)
+			return !_sign;
+
+		if (_values && _length)
+		{
+			for (size_t i = _length - 1; i != size_t(-1); --i)
+			{
+				if (_values[i] > other._values[i])
+					return _sign;
+
+				if (_values[i] < other._values[i])
+					return !_sign;
+			}
 		}
 	}
 
@@ -410,70 +435,43 @@ bool longNum::operator >(const longNum &other) const
 template <class Type>
 bool longNum::operator >(const Type other) const
 {
-#if 0
-	// ~7.6 times slower
-	return *this > longNum(other);
-#else
-	if ((_sign != (other >= 0)) || _length > 20u)
+	if (_values || _sign != (other >= 0))
 		return _sign;
 
-	// Going to actually change const Type other, as it is passed by value and doesn't affect anything
-	Type* ptr = const_cast<Type*>(&other);
-	int len(0);
-	bool res(false);
+	if(_sign)
+		return _length > static_cast<size_t>(other);
 
-	if (!_sign)
-		*ptr *= -1;
-
-	while (other)
-	{
-		if (_length == len)
-			return !_sign;
-
-		if (_values[len] != other % BASE)
-			res = _values[len] > other % BASE ? _sign : !_sign;
-
-		*ptr /= BASE;
-		len++;
-	}
-
-	if (_length > len)
-	{
-		if (len == 0 && !*this)
-			return false;
-
-		return _sign;
-	}
-
-	return res;
-#endif
+	return _length < static_cast<size_t>(-other);
 }
 
 // -----------------------------------------------------------------------------------------------
 
 bool longNum::operator >=(const longNum &other) const
 {
-	if (_sign > other._sign)
-		return true;
-
-	if (_sign < other._sign)
-		return false;
-
-	if (_length > other._length)
-		return _sign;
-
-	if (_length < other._length)
-		return !_sign;
-
-	if (_length)
+	if (bool(_values) == bool(other._values))
 	{
-		for (size_t i = _length - 1; i != size_t(-1); --i)
-		{
-			if (_values[i] > other._values[i])
-				return _sign;
+		if (_sign > other._sign)
+			return true;
 
-			if (_values[i] < other._values[i])
-				return !_sign;
+		if (_sign < other._sign)
+			return false;
+
+		if (_length > other._length)
+			return _sign;
+
+		if (_length < other._length)
+			return !_sign;
+
+		if (_values && _length)
+		{
+			for (size_t i = _length - 1; i != size_t(-1); --i)
+			{
+				if (_values[i] > other._values[i])
+					return _sign;
+
+				if (_values[i] < other._values[i])
+					return !_sign;
+			}
 		}
 	}
 
@@ -485,70 +483,43 @@ bool longNum::operator >=(const longNum &other) const
 template <class Type>
 bool longNum::operator >=(const Type other) const
 {
-#if 0
-	// ~7.9 times slower
-	return *this >= longNum(other);
-#else
-	if ((_sign != (other >= 0)) || _length > 20u)
+	if (_values || _sign != (other >= 0))
 		return _sign;
 
-	// Going to actually change const Type other, as it is passed by value and doesn't affect anything
-	Type* ptr = const_cast<Type*>(&other);
-	int len(0);
-	bool res(true);
+	if (_sign)
+		return _length >= static_cast<size_t>(other);
 
-	if (!_sign)
-		*ptr *= -1;
-
-	while (other)
-	{
-		if (_length == len)
-			return !_sign;
-
-		if (_values[len] != other % BASE)
-			res = _values[len] > other % BASE ? _sign : !_sign;
-
-		*ptr /= BASE;
-		len++;
-	}
-
-	if (_length > len)
-	{
-		if (len == 0 && !*this)
-			return true;
-
-		return _sign;
-	}
-
-	return res;
-#endif
+	return _length <= static_cast<size_t>(-other);
 }
 
 // -----------------------------------------------------------------------------------------------
 
 bool longNum::operator <(const longNum &other) const
 {
-	if (_sign < other._sign)
-		return true;
-
-	if (_sign > other._sign)
-		return false;
-
-	if (_length < other._length)
-		return _sign;
-
-	if (_length > other._length)
-		return !_sign;
-
-	if (_length)
+	if (bool(_values) == bool(other._values))
 	{
-		for (size_t i = _length - 1; i != size_t(-1); --i)
-		{
-			if (_values[i] < other._values[i])
-				return _sign;
+		if (_sign < other._sign)
+			return true;
 
-			if (_values[i] > other._values[i])
-				return !_sign;
+		if (_sign > other._sign)
+			return false;
+
+		if (_length < other._length)
+			return _sign;
+
+		if (_length > other._length)
+			return !_sign;
+
+		if (_values && _length)
+		{
+			for (size_t i = _length - 1; i != size_t(-1); --i)
+			{
+				if (_values[i] < other._values[i])
+					return _sign;
+
+				if (_values[i] > other._values[i])
+					return !_sign;
+			}
 		}
 	}
 
@@ -560,70 +531,43 @@ bool longNum::operator <(const longNum &other) const
 template <class Type>
 bool longNum::operator <(const Type other) const
 {
-#if 0
-	// 7.7 times slower
-	return *this < longNum(other);
-#else
-	if ((_sign != (other >= 0)) || _length > 20u)
+	if (_values || _sign != (other >= 0))
 		return !_sign;
 
-	// Going to actually change const Type other, as it is passed by value and doesn't affect anything
-	Type* ptr = const_cast<Type*>(&other);
-	int len(0);
-	bool res(false);
+	if (_sign)
+		return _length < static_cast<size_t>(other);
 
-	if (!_sign)
-		*ptr *= -1;
-
-	while (other)
-	{
-		if (_length == len)
-			return _sign;
-
-		if (_values[len] != other % BASE)
-			res = _values[len] < other % BASE ? _sign : !_sign;
-
-		*ptr /= BASE;
-		len++;
-	}
-
-	if (_length > len)
-	{
-		if (len == 0 && !*this)
-			return false;
-
-		return !_sign;
-	}
-
-	return res;
-#endif
+	return _length > static_cast<size_t>(-other);
 }
 
 // -----------------------------------------------------------------------------------------------
 
 bool longNum::operator <=(const longNum &other) const
 {
-	if (_sign < other._sign)
-		return true;
-
-	if (_sign > other._sign)
-		return false;
-
-	if (_length < other._length)
-		return _sign;
-
-	if (_length > other._length)
-		return !_sign;
-
-	if (_length)
+	if (bool(_values) == bool(other._values))
 	{
-		for (size_t i = _length - 1; i != size_t(-1); --i)
-		{
-			if (_values[i] < other._values[i])
-				return _sign;
+		if (_sign < other._sign)
+			return true;
 
-			if (_values[i] > other._values[i])
-				return !_sign;
+		if (_sign > other._sign)
+			return false;
+
+		if (_length < other._length)
+			return _sign;
+
+		if (_length > other._length)
+			return !_sign;
+
+		if (_values && _length)
+		{
+			for (size_t i = _length - 1; i != size_t(-1); --i)
+			{
+				if (_values[i] < other._values[i])
+					return _sign;
+
+				if (_values[i] > other._values[i])
+					return !_sign;
+			}
 		}
 	}
 
@@ -635,43 +579,13 @@ bool longNum::operator <=(const longNum &other) const
 template <class Type>
 bool longNum::operator <=(const Type other) const
 {
-#if 0
-	// 7.5 times slower
-	return *this <= longNum(other);
-#else
-	if ((_sign != (other >= 0)) || _length > 20u)
+	if (_values || _sign != (other >= 0))
 		return !_sign;
 
-	// Going to actually change const Type other, as it is passed by value and doesn't affect anything
-	Type* ptr = const_cast<Type*>(&other);
-	int len(0);
-	bool res(true);
+	if (_sign)
+		return _length <= static_cast<size_t>(other);
 
-	if (!_sign)
-		*ptr *= -1;
-
-	while (other)
-	{
-		if (_length == len)
-			return _sign;
-
-		if (_values[len] != other % BASE)
-			res = _values[len] < other % BASE ? _sign : !_sign;
-
-		*ptr /= BASE;
-		len++;
-	}
-
-	if (_length > len)
-	{
-		if (len == 0 && !*this)
-			return true;
-
-		return !_sign;
-	}
-
-	return res;
-#endif
+	return _length >= static_cast<size_t>(-other);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -695,59 +609,288 @@ longNum longNum::operator +(const longNum &other) const
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: don't need to build new object longNum from 'other'. can be done faster. test it later
 template <class Type>
 longNum longNum::operator +(const Type other) const
 {
-#if 0
-	return std::move(*this + longNum(other));
-#else
 	longNum res;
 
 	if (_sign == (other >= 0))
 	{
+		// Templated version
 		add2positive(*this, other, res);
 		res._sign = _sign;
 	}
 	else
 	{
+		// Templated version
 		subtr2positive(*this, other, res);
 	}
 
 	return std::move(res);
-#endif
 }
 
 // -----------------------------------------------------------------------------------------------
 
 longNum& longNum::operator +=(const longNum &other)
 {
+	if (_values)
+	{
+		if (other._values)
+		{
+			opPlusEqual_1(*this, other);
+		}
+		else
+		{
+			opPlusEqual_2(*this, other);
+		}
+	}
+	else
+	{
+		if (other._values)
+		{
+			opPlusEqual_3(*this, other);
+		}
+		else
+		{
+			opPlusEqual_4(*this, other);
+		}
+	}
+
+	return *this;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+longNum& longNum::operator +=(longNum&& other) noexcept
+{
+	// We can steal the data from other number, if it is larger than this one
+	// BUT
+	// Moving something out of '&& other' makes sense only in these two cases:
+	// []		+= []
+	// size_t	+= []
+	if (other._values)
+	{
+		if (!_values || (_values && _length < other._length))
+		{
+			size_t	   tmpLength = _length;
+			digitType* tmpValues = _values;
+			bool	   tmpSign   = _sign;
+
+			_length = other._length;
+			_sign   = other._sign;
+			_values = other._values;
+
+			other._length = tmpLength;
+			other._sign   = tmpSign;
+			other._values = tmpValues;
+		}
+	}
+
+	*this += other;
+
+	return *this;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// []		+ Type
+// size_t	+ Type
+template <class Type>
+longNum& longNum::operator +=(const Type other)
+{
+	Type* ptr = const_cast<Type*>(&other);
+
+	if (_values)
+	{
+		// [] += Type
+		if (_sign == (other >= 0))
+		{
+			// Perform adding in place
+			digitType carryOver(0);
+
+			if (*ptr < 0)
+				*ptr = -*ptr;
+
+			for (size_t i = 0; i < _length; ++i)
+			{
+				_values[i] += carryOver;
+
+				if (other)
+				{
+					_values[i] += other % BASE;
+					*ptr /= BASE;
+				}
+
+				carryOver = (_values[i] >= BASE) ? 1u : 0u;
+
+				if (carryOver)
+					_values[i] %= BASE;
+			}
+
+			// If carryOver > 0, we need to reallocate and normalize
+			if (carryOver)
+			{
+#if defined _TRACE_
+				std::cout << " ---> Alloc (operator += <Type>)" << std::endl;
+#endif
+				digitType* data = new digitType[_length + 1u];
+
+				memcpy(data, _values, sizeof(digitType) * _length);
+
+				data[_length++] = carryOver;
+
+				delete[] _values;
+				_values = data;
+			}
+		}
+		else
+		{
+			// |*this| always > |other| -- No need for realloc. Subtract numbers in place
+
+			size_t cnt(0);
+
+			if (*ptr < 0)
+				*ptr = -*ptr;
+
+			for (size_t i = 0; i < _length; ++i)
+			{
+				if (other)
+				{
+					_values[i] -= other % BASE;
+					*ptr /= BASE;
+				}
+
+				if (_values[i] < 0)
+				{
+					_values[i + 1]--;
+					_values[i] += BASE;
+				}
+
+				cnt = _values[i] ? 0 : cnt + 1u;
+			}
+
+			// Adjust the length, so leading zeroes will be trimmed out
+			_length -= cnt;
+
+			// Value has reduced...
+			convertToSizeT_ifPossible();
+		}
+	}
+	else
+	{
+		// size_t += Type
+		if (_sign == (other >= 0))
+		{
+			// Add the numbers and keep the sign
+			if (*ptr < 0)
+				*ptr = -*ptr;
+
+			size_t length = _length + other;
+
+			// Overflow: need to allocate memory
+			if (length < _length || length < other)
+			{
+#if defined _TRACE_
+				std::cout << " ---> Alloc (operator += <Type>)" << std::endl;
+#endif
+
+				size_t MAX(-1), i(0);
+				digitType carryOver(1);
+
+				// 20, not 21. See the comment below.
+				digitType* data = new digitType[20u];
+
+				while (MAX)
+				{
+					data[i] = MAX % BASE + carryOver;
+
+					if (length)
+					{
+						data[i] += length % BASE;
+						length /= BASE;
+					}
+
+					MAX /= BASE;
+					carryOver = (data[i] >= BASE) ? 1u : 0u;
+					data[i] = data[i] % BASE;
+					++i;
+				}
+
+				// Never going to hit this piece, as max numbers that allow us entering this branch of code
+				// are size_t(-1) == 18446744073709551615
+				// The sum of two such numbers is 36893488147419103230, which is still 20 digits long
+				// So no carryOver at this point.
 #if 0
+				if (carryOver)
+					data[i] = 1u;
+#endif
+
+				_length = i;
+				_values = data;
+			}
+			else
+			{
+				_length = length;
+			}
+		}
+		else
+		{
+			// Subtract lesser from greater and keep the greater's sign
+			if (*ptr < 0)
+				*ptr = -*ptr;
+
+			if (_length < other)
+			{
+				_length = other - _length;
+				_sign = !_sign;
+			}
+			else
+			{
+				_length -= other;
+			}
+
+			if (!_length)
+				_sign = POS;
+		}
+	}
+
+	return *this;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// operator += helper 1 ([] += [])
+void longNum::opPlusEqual_1(longNum &n1, const longNum &n2) const
+{
+#if 0
+
 	// This code is slower (Tested)
-	*this = *this + other;
+	n1 = n1 + n2;
+
 #else
-	if (_sign == other._sign)
+
+	if (n1._sign == n2._sign)
 	{
 		// In case the sign is the same, we add the numbers and keep the sign.
 		// Also, there's a chance we'll be able to add the 2 numbers without reallocation
-		if (_length < other._length)
+		if (n1._length < n2._length)
 		{
 			// Go with full alloc cycle
-			*this = std::move(*this + other);
+			n1 = std::move(n1 + n2);
 		}
 		else
 		{
 			// Perform adding in place
 			digitType carryOver = 0u, nRes = 0u;
 
-			for (size_t i = 0; i < _length; ++i)
+			for (size_t i = 0; i < n1._length; ++i)
 			{
-				nRes = _values[i] + carryOver;
+				nRes = n1._values[i] + carryOver;
 
-				if (i < other._length)
-					nRes += other._values[i];
+				if (i < n2._length)
+					nRes += n2._values[i];
 
-				_values[i] = nRes % BASE;
+				n1._values[i] = nRes % BASE;
 
 				carryOver = (nRes >= BASE) ? 1u : 0u;
 			}
@@ -756,16 +899,16 @@ longNum& longNum::operator +=(const longNum &other)
 			if (carryOver)
 			{
 #if defined _TRACE_
-				std::cout << " ---> Alloc" << std::endl;
+				std::cout << " ---> Alloc (opPlusEqual_1)" << std::endl;
 #endif
-				digitType* newVal = new digitType[_length + 1u];
+				digitType* newVal = new digitType[n1._length + 1u];
 
-				memcpy(newVal, _values, sizeof(digitType) * _length);
+				memcpy(newVal, n1._values, sizeof(digitType) * n1._length);
 
-				newVal[_length++] = carryOver;
+				newVal[n1._length++] = carryOver;
 
-				delete[] _values;
-				_values = newVal;
+				delete[] n1._values;
+				n1._values = newVal;
 			}
 		}
 	}
@@ -774,31 +917,21 @@ longNum& longNum::operator +=(const longNum &other)
 		// In case the signs are opposite, we subtract smaller number from the greater and keep the sign of the greater one
 
 		// First, we need to determine which number's absolute value is greater
-		int isGreater = absValueIsLarger(*this, other);
+		int isGreater = absValueIsLarger(n1, n2);
 
 		// The numbers are equal, return 0
 		if (!isGreater)
 		{
-#if defined _TRACE_
-			std::cout << " ---> Alloc for '0' value" << std::endl;
-#endif
-			// TODO: don't reallocate if _length is relatively small
-			// Just set _length to 1 and Values[] to 0
-			// Need to test it later
-			if (_length > 1)
-			{
-				delete[] _values;
-				_values = new digitType[1];
-			}
+			delete[] n1._values;
+			n1._values = nullptr;
 
-			_length = 1;
-			_values[0] = 0;
-			_sign = POS;
+			n1._length = 0;
+			n1._sign = POS;
 		}
 		else
 		{
-			const longNum* pn1(this);
-			const longNum* pn2(&other);
+			const longNum* pn1(&n1);
+			const longNum* pn2(&n2);
 
 			digitType* res = pn1->_values;
 
@@ -807,11 +940,11 @@ longNum& longNum::operator +=(const longNum &other)
 			if (isGreater == 2)
 			{
 #if defined _TRACE_
-				std::cout << " ---> Alloc tmp buffer" << std::endl;
+				std::cout << " ---> Alloc tmp buffer (opPlusEqual_1)" << std::endl;
 #endif
-				// This < other: Will need another buffer for the result
-				pn1 = &other;
-				pn2 = this;
+				// n1 < n2: Will need another buffer for the result
+				pn1 = &n2;
+				pn2 = &n1;
 
 				size_t len_minus_one = pn1->_length - 1;
 
@@ -821,11 +954,11 @@ longNum& longNum::operator +=(const longNum &other)
 				for (; i < pn2->_length; ++i)
 				{
 					if (i < len_minus_one)
-						res[i+1] = pn1->_values[i+1];
+						res[i + 1] = pn1->_values[i + 1];
 
 					while (res[i] < pn2->_values[i])
 					{
-						res[i+1]--;
+						res[i + 1]--;
 						res[i] += BASE;
 					}
 
@@ -836,30 +969,30 @@ longNum& longNum::operator +=(const longNum &other)
 				for (; i < pn1->_length; ++i)
 				{
 					if (i < len_minus_one)
-						res[i+1] = pn1->_values[i+1];
+						res[i + 1] = pn1->_values[i + 1];
 
 					while (res[i] < 0)
 					{
-						res[i+1]--;
+						res[i + 1]--;
 						res[i] += BASE;
 					}
 
 					cnt = res[i] ? 0 : cnt + 1;
 				}
 
-				_length = pn1->_length - cnt;				// Adjust the length, so leading zeroes will be trimmed out
+				n1._length = pn1->_length - cnt;			// Adjust the length, so leading zeroes will be trimmed out
 
-				delete[] _values;
-				_values = res;
+				delete[] n1._values;
+				n1._values = res;
 			}
 			else
 			{
-				// This > other: No need for realloc. Subtract numbers in place
+				// n1 > n2: No need for realloc. Subtract numbers in place
 				for (; i < pn2->_length; ++i)
 				{
 					while (res[i] < pn2->_values[i])
 					{
-						res[i+1]--;
+						res[i + 1]--;
 						res[i] += BASE;
 					}
 
@@ -871,7 +1004,7 @@ longNum& longNum::operator +=(const longNum &other)
 				{
 					while (pn1->_values[i] < 0)
 					{
-						pn1->_values[i+1]--;
+						pn1->_values[i + 1]--;
 						pn1->_values[i] += BASE;
 					}
 
@@ -879,51 +1012,236 @@ longNum& longNum::operator +=(const longNum &other)
 					cnt = res[i] ? 0 : cnt + 1;
 				}
 
-				_length -= cnt;								// Adjust the length, so leading zeroes will be trimmed out
+				n1._length -= cnt;							// Adjust the length, so leading zeroes will be trimmed out
 			}
 
-			_sign = pn1->_sign;								// Sign is determined by the greater number (in absolute terms)
+			n1._sign = pn1->_sign;							// Sign is determined by the greater number (in absolute terms)
+
+			// Value has reduced...
+			n1.convertToSizeT_ifPossible();
 		}
 	}
 #endif
 
-	return *this;
+	return;
 }
 
 // -----------------------------------------------------------------------------------------------
 
-longNum& longNum::operator +=(longNum&& other) noexcept
+// operator += helper 2 ([] += size_t)
+void longNum::opPlusEqual_2(longNum &n1, const longNum &n2)
 {
-	// We can steal the data from other number, if it is larger than this one
-	if (_length < other._length)
+	size_t tmp(n2._length);
+
+	if (n1._sign == n2._sign)
 	{
-		size_t	   tmpLength = _length;
-		digitType* tmpValues = _values;
-		bool	   tmpSign   = _sign;
+		// Perform adding in place
+		digitType carryOver(0);
 
-		_length = other._length;
-		_sign   = other._sign;
-		_values = std::move(other._values);
+		for (size_t i = 0; i < n1._length; ++i)
+		{
+			n1._values[i] += carryOver;
 
-		other._length = tmpLength;
-		other._sign   = tmpSign;
-		other._values = std::move(tmpValues);
+			if (tmp)
+			{
+				n1._values[i] += tmp % BASE;
+				tmp /= BASE;
+			}
+
+			carryOver = (n1._values[i] >= BASE) ? 1u : 0u;
+
+			if (carryOver)
+				n1._values[i] %= BASE;
+		}
+
+		// If carryOver > 0, we need to reallocate and normalize
+		if (carryOver)
+		{
+#if defined _TRACE_
+			std::cout << " ---> Alloc (opPlusEqual_2)" << std::endl;
+#endif
+			digitType* newVal = new digitType[n1._length + 1u];
+
+			memcpy(newVal, n1._values, sizeof(digitType) * n1._length);
+
+			newVal[n1._length++] = carryOver;
+
+			delete[] n1._values;
+			n1._values = newVal;
+		}
+	}
+	else
+	{
+		// |n1| always > |n2| -- No need for realloc. Subtract numbers in place
+
+		size_t cnt(0);
+
+		for (size_t i = 0; i < n1._length; ++i)
+		{
+			if (tmp)
+			{
+				n1._values[i] -= (tmp % BASE);
+				tmp /= BASE;
+			}
+
+			if (n1._values[i] < 0)
+			{
+				n1._values[i + 1]--;
+				n1._values[i] += BASE;
+			}
+
+			cnt = n1._values[i] ? 0 : cnt + 1u;
+		}
+
+		// Adjust the length, so leading zeroes will be trimmed out
+		n1._length -= cnt;
+
+		// Value has reduced...
+		n1.convertToSizeT_ifPossible();
 	}
 
-	*this += other;
-
-	return *this;
+	return;
 }
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: don't need to build new object longNum from 'other'. can be done faster. test it later
-template <class Type>
-longNum& longNum::operator +=(const Type other)
+// operator += helper 3 (size_t += [])
+void longNum::opPlusEqual_3(longNum &n1, const longNum &n2)
 {
-	*this += longNum(other);
+#if defined _TRACE_
+	std::cout << " ---> Alloc (opPlusEqual_3)" << std::endl;
+#endif
 
-	return *this;
+	size_t tmp(n1._length);
+	digitType carryOver(0);
+
+	if (n1._sign == n2._sign)
+	{
+		n1._values = new digitType[n2._length + 1u];
+
+		for (n1._length = 0; n1._length < n2._length; ++n1._length)
+		{
+			n1._values[n1._length] = n2._values[n1._length] + carryOver;
+
+			if (tmp)
+			{
+				n1._values[n1._length] += tmp % BASE;
+				tmp /= BASE;
+			}
+
+			carryOver = (n1._values[n1._length] >= BASE) ? 1u : 0u;
+			n1._values[n1._length] %= BASE;
+		}
+
+		if (carryOver)
+		{
+			n1._values[n1._length++] = 1u;
+		}
+	}
+	else
+	{
+		// |n1| always < |n2|
+
+		size_t cnt(0);
+		n1._values = new digitType[n2._length];
+
+		for (n1._length = 0; n1._length < n2._length; ++n1._length)
+		{
+			n1._values[n1._length] = n2._values[n1._length] - tmp % BASE - carryOver;
+			tmp /= BASE;
+
+			carryOver = (n1._values[n1._length] < 0) ? 1 : 0;
+
+			if (carryOver)
+			{
+				n1._values[n1._length] += BASE;
+			}
+
+			cnt = n1._values[n1._length] ? 0 : cnt + 1u;
+		}
+
+		n1._length -= cnt;
+
+		// Value has reduced...
+		n1.convertToSizeT_ifPossible();
+	}
+
+	return;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// operator += helper 4 (size_t += size_t)
+void longNum::opPlusEqual_4(longNum &n1, const longNum &n2)
+{
+	if (n1._sign == n2._sign)
+	{
+		// Add the numbers and keep the sign
+
+		size_t length = n1._length + n2._length;
+
+		// Overflow: need to allocate memory
+		if (length < n1._length || length < n2._length)
+		{
+#if defined _TRACE_
+			std::cout << " ---> Alloc (opPlusEqual_4)" << std::endl;
+#endif
+
+			size_t tmp(-1), i(0);
+			digitType carryOver(1);
+
+			digitType* data = new digitType[20u];
+
+			while (tmp)
+			{
+				data[i] = tmp % BASE + carryOver;
+
+				if (length)
+				{
+					data[i] += length % BASE;
+					length /= BASE;
+				}
+
+				tmp /= BASE;
+				carryOver = (data[i] >= BASE) ? 1u : 0u;
+				data[i] = data[i] % BASE;
+				++i;
+			}
+
+#if 0
+			if (carryOver)
+				data[i] = 1u;
+#endif
+
+			n1._length = i;
+			n1._values = data;
+		}
+		else
+		{
+			n1._length = length;
+		}
+	}
+	else
+	{
+		// Subtract lesser from greater and keep the greater's sign
+
+		const longNum* pn1 = &n1;
+		const longNum* pn2 = &n2;
+
+		if (n1._length < n2._length)
+		{
+			pn1 = &n2;
+			pn2 = &n1;
+		}
+
+		n1._length = pn1->_length - pn2->_length;
+		n1._sign = pn1->_sign;
+
+		if (!n1._length)
+			n1._sign = POS;
+	}
+
+	return;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -1340,6 +1658,7 @@ longNum& longNum::operator --()
 
 // -----------------------------------------------------------------------------------------------
 
+// TODO :: rewrite, now its wrong
 longNum::operator bool() const
 {
 	return _length != 1 || _values[0] != 0;
@@ -1354,6 +1673,7 @@ std::string longNum::get() const
 
 	if (_values)
 	{
+		// Return value stored as array
 		str.reserve(_sign == NEG ? _length+1 : _length);
 
 		if(_sign == NEG)
@@ -1364,7 +1684,35 @@ std::string longNum::get() const
 	}
 	else
 	{
-		str = "0";
+		// Return value stored in _length
+		if (_length)
+		{
+			size_t len(0), tmp(_length);
+
+			while (tmp)
+			{
+				len++;
+				tmp /= 10u;
+			}
+
+			str.resize(_sign == NEG ? ++len : len);
+
+			if (_sign == NEG)
+				str[0] = '-';
+
+			tmp = _length;
+
+			while (tmp)
+			{
+				len--;
+				str[len] = static_cast<char>(tmp % 10u) + 48;
+				tmp /= 10u;
+			}
+		}
+		else
+		{
+			str = "0";
+		}
 	}
 
 	return str;
@@ -1372,8 +1720,43 @@ std::string longNum::get() const
 
 // -----------------------------------------------------------------------------------------------
 
-// Add 2 positive numbers
+// Both numbers are long versions
 void longNum::add2positive(const longNum &n1, const longNum &n2, longNum &res) const
+{
+	if (n1._values)
+	{
+		if (n2._values)
+		{
+			// Add 2 positive numbers: each one is a long version
+			add2positive_1(n1, n2, res);
+		}
+		else
+		{
+			// Add 2 positive numbers: The first one is an array, the second one is a size_t
+			add2positive_3(n1, n2._length, res);
+		}
+	}
+	else
+	{
+		if (n2._values)
+		{
+			// Add 2 positive numbers: The first one is an array, the second one is a size_t
+			add2positive_3(n2, n1._length, res);
+		}
+		else
+		{
+			// Add 2 positive numbers: Each of the two holds its number as a size_t
+			add2positive_2(n1, n2, res);
+		}
+	}
+
+	return;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Add 2 positive longNums: Each of the two has allocated array
+void longNum::add2positive_1(const longNum &n1, const longNum &n2, longNum &res) const
 {
 	// The longest number will be the first
 	const longNum* p1(&n1);
@@ -1386,7 +1769,7 @@ void longNum::add2positive(const longNum &n1, const longNum &n2, longNum &res) c
 	}
 
 	#if defined _TRACE_
-		std::cout << " ---> Alloc" << std::endl;
+		std::cout << " ---> Alloc (add2positive_1)" << std::endl;
 	#endif
 
 	res._length = p1->_length;
@@ -1420,65 +1803,177 @@ void longNum::add2positive(const longNum &n1, const longNum &n2, longNum &res) c
 
 // -----------------------------------------------------------------------------------------------
 
+// Add 2 positive numbers: Each of the two holds its number as a size_t
+void longNum::add2positive_2(const longNum& n1, const longNum& n2, longNum& res) const
+{
+	res._length = n1._length + n2._length;
+
+	// Overflow: need to allocate memory
+	if (res._length < n1._length || res._length < n2._length)
+	{
+#if defined _TRACE_
+		std::cout << " ---> Alloc (add2positive_2)" << std::endl;
+#endif
+
+		size_t tmp(-1), i(0);
+		digitType carryOver(1);
+
+		res._values = new digitType[20u];
+
+		while (tmp)
+		{
+			res._values[i] = tmp % BASE + carryOver;
+
+			if (res._length)
+			{
+				res._values[i] += res._length % BASE;
+				res._length /= BASE;
+			}
+
+			tmp /= BASE;
+			carryOver = (res._values[i] >= BASE) ? 1u : 0u;
+			res._values[i] = res._values[i] % BASE;
+			++i;
+		}
+
+#if 0
+		if (carryOver)
+			res._values[i] = 1u;
+#endif
+
+		res._length = i;
+	}
+
+	return;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Add 2 positive numbers: The first one is an array, the second one is a size_t
+// TODO: replace tmp with consyt_castr ptr
+void longNum::add2positive_3(const longNum& n1, const size_t n2, longNum& res) const
+{
+#if defined _TRACE_
+	std::cout << " ---> Alloc (add2positive_3)" << std::endl;
+#endif
+
+	size_t tmp(n2);
+	digitType carryOver(0);
+
+	res._length = n1._length;
+	res._values = new digitType[n1._length + 1u];
+
+	for (size_t i = 0; i < res._length; ++i)
+	{
+		res._values[i] = n1._values[i] + carryOver;
+
+		if (tmp)
+		{
+			res._values[i] += tmp % BASE;
+			tmp /= BASE;
+		}
+
+		carryOver = (res._values[i] >= BASE) ? 1u : 0u;
+		res._values[i] = res._values[i] % BASE;
+	}
+
+	if (carryOver)
+	{
+		res._values[res._length++] = 1u;
+	}
+
+	return;
+}
+
+// -----------------------------------------------------------------------------------------------
+
 // Pre-requirement: res._values is not allocated yet
+// TODO: remove pragma when it's not needed
 template <class Type>
 void longNum::add2positive(const longNum &n1, const Type n2, longNum &res) const
 {
-	if (n1._length > 20u)
+	Type* tmp = const_cast<Type*>(&n2);
+
+	// #pragma warning (disable:4146)
+	// This piece of code won't affect any unsigned types.
+	// But when we pass unsigned type as template Type, the compiler ignores the fact that the value is compared with zero,
+	// but still says we can't assign *tmp to -*tmp
+	// So we disable this warning for good
+	if (*tmp < 0)
+		*tmp = -*tmp;
+
+	if (n1._values)
 	{
+		// Add 2 positive numbers: The first one is an array, the second one is a Type
+		digitType carryOver(0);
+
+#if defined _TRACE_
+		std::cout << " ---> Alloc (add2positive<Type>) - 1" << std::endl;
+#endif
+
 		res._length = n1._length;
+		res._values = new digitType[n1._length + 1u];
+
+		for (size_t i = 0; i < res._length; ++i)
+		{
+			res._values[i] = n1._values[i] + carryOver;
+
+			if (n2)
+			{
+				res._values[i] += n2 % BASE;
+				*tmp /= BASE;
+			}
+
+			carryOver = (res._values[i] >= BASE) ? 1u : 0u;
+			res._values[i] = res._values[i] % BASE;
+		}
+
+		if (carryOver)
+		{
+			res._values[res._length++] = 1u;
+		}
 	}
 	else
 	{
-		size_t len(sizeof(Type));
+		// Add 2 positive numbers: The first one holds its value as a size_t, the second one is a Type
 
-		if (len < 8)
+		res._length = n1._length + n2;
+
+		// Overflow: need to allocate memory
+		if (res._length < n1._length || res._length < n2)
 		{
-			len = len < 4 ? 5 : 10;
-		}
-		else
-		{
-			len = 20;
-		}
-
-		res._length = (n1._length > len ? n1._length : len);
-	}
-
 #if defined _TRACE_
-	std::cout << " ---> Alloc" << std::endl;
+			std::cout << " ---> Alloc (add2positive<Type>) - 2" << std::endl;
 #endif
 
-	Type* ptr = const_cast<Type*>(&n2);
+			size_t MAX(-1), i(0);
+			digitType carryOver(1);
 
-	if (!n1._sign)
-		*ptr *= -1;
+			res._values = new digitType[20u];
 
-	res._values = new digitType[res._length+1];
+			while (MAX)
+			{
+				res._values[i] = MAX % BASE + carryOver;
 
-	digitType nRes = 0;
-	res._length = 0;
+				if (res._length)
+				{
+					res._values[i] += res._length % BASE;
+					res._length /= BASE;
+				}
 
-	while(res._length < n1._length || n2)
-	{
-		if (res._length < n1._length)
-		{
-			nRes += n1._values[res._length];
+				MAX /= BASE;
+				carryOver = (res._values[i] >= BASE) ? 1u : 0u;
+				res._values[i] = res._values[i] % BASE;
+				++i;
+			}
+
+#if 0
+			if (carryOver)
+				res._values[i] = 1u;
+#endif
+
+			res._length = i;
 		}
-
-		if (n2)
-		{
-			nRes += n2 % BASE;
-			*ptr /= BASE;
-		}
-
-		res._values[res._length++] = nRes % BASE;
-
-		nRes = (nRes >= BASE) ? 1 : 0;
-	}
-
-	if (nRes)
-	{
-		res._values[res._length++] = 1;
 	}
 
 	return;
@@ -1492,11 +1987,43 @@ void longNum::add2positive(const longNum &n1, const Type n2, longNum &res) const
 //	true  : n1 <  n2
 bool longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res) const
 {
+	if (n1._values)
+	{
+		if (n2._values)
+		{
+			// Subtract 2 positive numbers: each one is a long version
+			return subtr2positive_1(n1, n2, res);
+		}
+		else
+		{
+			// Subtract 2 positive numbers: The first one is an array, the second one is a size_t
+			return subtr2positive_3(n1, n2._length, res);
+		}
+	}
+	else
+	{
+		if (n2._values)
+		{
+			// Subtract 2 positive numbers: The first one is an array, the second one is a size_t
+			return !subtr2positive_3(n2, n1._length, res);
+		}
+		else
+		{
+			// Subtract 2 positive numbers: Each of the two holds its number as a size_t
+			return subtr2positive_2(n1, n2, res);
+		}
+	}
+
+	return true;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// [] - []
+bool longNum::subtr2positive_1(const longNum &n1, const longNum &n2, longNum &res) const
+{
 	bool bRes = true;
 
-#if defined _TRACE_
-	std::cout << " ---> Alloc" << std::endl;
-#endif
 	const longNum* pn1(&n2);
 	const longNum* pn2(&n1);
 
@@ -1507,14 +2034,16 @@ bool longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res)
 	if (!isGreater)
 	{
 		if (res._values)
-		{
 			delete[] res._values;
-		}
 
-		res._sign   = POS;
-		res._length = 1;
-		res._values = new digitType[1];
-		res._values[0] = 0;
+#if defined _TRACE_
+		std::cout << " ---> longNum converted to size_t : 0" << std::endl;
+#endif
+
+		res._values = nullptr;
+		res._length = 0;
+		res._sign = POS;
+
 		return false;
 	}
 
@@ -1525,12 +2054,14 @@ bool longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res)
 		bRes = false;
 	}
 
+#if defined _TRACE_
+	std::cout << " ---> Alloc (subtr2positive_1)" << std::endl;
+#endif
+
 	res._length = pn1->_length;
 	res._values = new digitType[pn1->_length];
 
-	size_t i = 0, cnt = 0;
-
-	size_t len_minus_one = pn1->_length - 1;
+	size_t i = 0, cnt = 0, len_minus_one = pn1->_length - 1;
 
 	// One digit is guaranteed to be there
 	res._values[0] = pn1->_values[0];
@@ -1538,11 +2069,11 @@ bool longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res)
 	for (; i < pn2->_length; ++i)
 	{
 		if (i < len_minus_one)
-			res._values[i+1] = pn1->_values[i+1];
+			res._values[i + 1] = pn1->_values[i + 1];
 
 		while (res._values[i] < pn2->_values[i])
 		{
-			res._values[i+1]--;
+			res._values[i + 1]--;
 			res._values[i] += BASE;
 		}
 
@@ -1554,11 +2085,11 @@ bool longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res)
 	for (; i < pn1->_length; ++i)
 	{
 		if (i < len_minus_one)
-			res._values[i+1] = pn1->_values[i+1];
+			res._values[i + 1] = pn1->_values[i + 1];
 
-		while(res._values[i] < 0)
+		while (res._values[i] < 0)
 		{
-			res._values[i+1]--;
+			res._values[i + 1]--;
 			res._values[i] += BASE;
 		}
 
@@ -1568,7 +2099,77 @@ bool longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res)
 	res._sign = pn1->_sign;						// Sign is determined by the greater number
 	res._length -= cnt;							// Adjust the length, so leading zeroes will be trimmed out
 
+	res.convertToSizeT_ifPossible();
+
 	return bRes;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Subtract 2 positive numbers: each is a size_t
+bool longNum::subtr2positive_2(const longNum &n1, const longNum &n2, longNum &res) const
+{
+	bool bRes(false);
+
+	if (n1._length < n2._length)
+	{
+		res._length = n2._length - n1._length;
+		res._sign   = n2._sign;
+		bRes = true;
+	}
+	else
+	{
+		res._length = n1._length - n2._length;
+		res._sign   = res._length ? n1._sign : POS;
+	}
+
+	return bRes;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Subtract 2 positive numbers: the first one is an array, the second one is a size_t
+// If the resulting number can be stored as a size_t, we'll have to store it like that
+// TODO: check if tmp(n2) is faster or slower than const_cast
+bool longNum::subtr2positive_3(const longNum &n1, const size_t n2, longNum &res) const
+{
+#if defined _TRACE_
+	std::cout << " ---> Alloc (subtr2positive_3)" << std::endl;
+#endif
+
+	res._length = n1._length;
+	res._values = new digitType[n1._length];
+
+	size_t tmp(n2), cnt(0);
+	digitType carryOver(0);
+
+	for (size_t i = 0; i < res._length; ++i)
+	{
+		res._values[i] = n1._values[i] - carryOver;
+
+		if (tmp)
+		{
+			res._values[i] -= tmp % BASE;
+			tmp /= BASE;
+		}
+
+		carryOver = (res._values[i] >= 0) ? 0u : 1u;
+
+		if(carryOver)
+			res._values[i] += BASE;
+
+		cnt = res._values[i] ? 0 : cnt + 1u;
+	}
+
+	if (cnt)
+		res._length -= cnt;
+
+	res._sign = n1._sign;					// Sign is determined by the greater number
+
+	// Need to check if we can store the number as a size_t
+	res.convertToSizeT_ifPossible();
+
+	return false;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -1580,92 +2181,80 @@ bool longNum::subtr2positive(const longNum &n1, const longNum &n2, longNum &res)
 template <class Type>
 bool longNum::subtr2positive(const longNum &n1, const Type n2, longNum &res) const
 {
-	// To subtract, we basically need to know what number is greater
-	// Here, we don't know that
-	// Let's try to do this anyway
+	Type* tmp = const_cast<Type*>(&n2);
 
-	if (n1._length > 20u)
+	if (n1._values)
 	{
+		// #pragma warning (disable:4146)
+		if (*tmp < 0)
+			*tmp = -*tmp;
+
+		// Subtract 2 positive numbers: The first one is an array, the second one is a Type
+
+#if defined _TRACE_
+		std::cout << " ---> Alloc (subtr2positive<Type>)" << std::endl;
+#endif
+
 		res._length = n1._length;
+		res._values = new digitType[n1._length];
+
+		size_t cnt(0);
+		digitType carryOver(0);
+
+		for (size_t i = 0; i < res._length; ++i)
+		{
+			res._values[i] = n1._values[i] - carryOver;
+
+			if (n2)
+			{
+				res._values[i] -= n2 % BASE;
+				*tmp /= BASE;
+			}
+
+			carryOver = (res._values[i] >= 0) ? 0u : 1u;
+
+			if (carryOver)
+				res._values[i] += BASE;
+
+			cnt = res._values[i] ? 0 : cnt + 1u;
+		}
+
+		if (cnt)
+			res._length -= cnt;
+
+		res._sign = n1._sign;					// Sign is determined by the greater number
+
+		// Need to check if we can store the number as a size_t
+		res.convertToSizeT_ifPossible();
+
+		return false;
 	}
 	else
 	{
-		size_t len(sizeof(Type));
+		bool bRes(false), n2_sign(true);
 
-		if (len < 8)
+		// #pragma warning (disable:4146)
+		if (*tmp < 0)
 		{
-			len = len < 4 ? 5 : 10;
+			n2_sign = false;
+			*tmp = -*tmp;
+		}
+
+		// Subtract 2 positive numbers: The first one holds its value as a size_t, the second one is a Type
+
+		if (n1._length < n2)
+		{
+			res._length = n2 - n1._length;
+			res._sign = n2_sign;
+			bRes = true;
 		}
 		else
 		{
-			len = 20;
+			res._length = n1._length - n2;
+			res._sign = res._length ? n1._sign : POS;
 		}
 
-		res._length = (n1._length > len ? n1._length : len);
-	}
-
-#if defined _TRACE_
-	std::cout << " ---> Alloc" << std::endl;
-#endif
-
-	Type* ptr = const_cast<Type*>(&n2);
-
-Type asdasdasd = n2;
-
-	res._values = new digitType[res._length];
-
-	digitType nRes = 0, nNext = 0;
-	res._length = 0;
-	size_t cnt = 0;
-
-	while (res._length < n1._length && n2)
-	{
-		nRes = n1._values[res._length] + nNext;
-
-		nRes -= n2 % BASE;
-		*ptr /= BASE;
-
-		if (nRes < 0)
-		{
-			nRes += 10;
-			nNext = -1;
-		}
-
-		res._values[res._length] = nRes;
-		cnt = res._values[res._length++] ? 0 : cnt + 1;
-	}
-
-	if (nNext < 0)
-	{
-		int a = 1;
-	}
-
-	if (!n2)
-	{
-		while (res._length < n1._length)
-		{
-			res._values[res._length] = n1._values[res._length] + nNext;
-
-			if (res._values[res._length] < 0)
-			{
-				res._values[res._length] += 10;
-				nNext = -1;
-			}
-
-			cnt = res._values[res._length] ? 0 : cnt + 1;
-			res._length++;
-		}
-
-		if (res._length == cnt)
-		{
-			res._length = 1;
-			res._sign = POS;
-		}
-		else
-		{
-			res._length -= cnt;
-			res._sign = n1._sign;
-		}
+		return bRes;
 	}
 
 	return true;
@@ -1700,6 +2289,50 @@ int longNum::absValueIsLarger(const longNum &n1, const longNum &n2) const
 
 	// At this point we know the 2 numbers are equal
 	return 0;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Tries to store the number as size_t
+// Pre-condition: _values is allocated, _length is holding length, not value
+void longNum::convertToSizeT_ifPossible()
+{
+	// max size_t = 18446744073709551615
+	static digitType maxSizeT[] = { 5, 1, 6, 1, 5, 5, 9, 0, 7, 3, 7, 0, 4, 4, 7, 6, 4, 4, 8, 1 };
+
+	if (_length < 21u)
+	{
+		size_t i(_length);
+
+		if (_length == 20)
+		{
+			// Check if the number is larger than max size_t
+			while (i--)
+			{
+				if (_values[i] < maxSizeT[i])
+					break;
+
+				if (_values[i] > maxSizeT[i])
+					return;
+			}
+
+			i = _length;
+		}
+
+		_length = 0u;
+
+		while (i--)
+			_length = _length * BASE + _values[i];
+
+		delete[] _values;
+		_values = nullptr;
+
+#if defined _TRACE_
+		std::cout << " ---> longNum converted to size_t : " << _length << std::endl;
+#endif
+	}
+
+	return;
 }
 
 // -----------------------------------------------------------------------------------------------
