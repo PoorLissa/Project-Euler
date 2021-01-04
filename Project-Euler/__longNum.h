@@ -4,6 +4,9 @@
 // Mb check this out later
 // https://codereview.stackexchange.com/questions/5520/copying-80-bytes-as-fast-as-possible
 
+// Karatsuba multiplication
+// https://habr.com/ru/post/124258/
+
 #include <string>
 
 // -----------------------------------------------------------------------------------------------
@@ -12,7 +15,26 @@
 
 // -----------------------------------------------------------------------------------------------
 
-#define _TRACE_
+//#define _TRACE_
+#define _IS_LESSER_
+
+#if !defined _IS_LESSER_
+
+  #define longNum_MAX_SIZE_T_LENGTH				20u
+  #define longNum_MAX_SIZE_T_LENGTH_PLUS_ONE	21u
+  #define longNum_MAX_SIZE_T_ORDER				1e19
+
+#else
+
+  #pragma warning (disable:4244)
+  #pragma warning (disable:4267)
+
+  #define size_t unsigned short int
+  #define longNum_MAX_SIZE_T_LENGTH				5u
+  #define longNum_MAX_SIZE_T_LENGTH_PLUS_ONE	6u
+  #define longNum_MAX_SIZE_T_ORDER				1e4
+
+#endif
 
 // -----------------------------------------------------------------------------------------------
 
@@ -90,7 +112,12 @@ class longNum {
 
 
 		// Getters
-		std::string get() const;
+		std::string		get() const;
+		size_t			as_size_t() const;
+
+
+		// Other
+		void flipSign();
 
 	private:
 		void convertToSizeT_ifPossible();															// Tries to store the number as size_t
@@ -120,7 +147,6 @@ class longNum {
 		digitType*	_values;
 		size_t		_length;
 		bool		_sign;
-
 };
 
 // -----------------------------------------------------------------------------------------------
@@ -142,12 +168,12 @@ longNum::longNum(const char *str) : _values(nullptr), _length(strlen(str)), _sig
 		}
 	}
 
-	if (_length >= 20u)
+	if (_length >= longNum_MAX_SIZE_T_LENGTH)
 	{
 		// Still might be less than size_t(-1)
-		if (_length == 20u)
+		if (_length == longNum_MAX_SIZE_T_LENGTH)
 		{
-			size_t tmp = static_cast<size_t>(1e19), Max(-1);
+			size_t tmp = static_cast<size_t>(longNum_MAX_SIZE_T_ORDER), Max(-1);
 			const char* STR = str;
 
 			while (tmp)
@@ -371,14 +397,33 @@ bool longNum::operator ==(const longNum& other) const
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: doesnt work with size_t somehow. check this later
 template <class Type>
 bool longNum::operator ==(const Type other) const
 {
-	if (_values || _sign != (other >= 0))
+	bool signOther = (other >= 0);
+
+#if defined _IS_LESSER_
+
+	if (_sign != signOther)
 		return false;
 
-	return _length == static_cast<size_t>(_sign ? other : -other);
+	if (_values)
+	{
+		unsigned long res(0), i(_length-1);
+		while(i != unsigned long(-1))
+			res = res * BASE + _values[i--];
+		return res == static_cast<unsigned long>(_sign ? other : -other);
+	}
+
+	return _length == static_cast<unsigned long long>(signOther ? other : -other);
+
+#endif
+
+	// TODO: doesnt work with size_t somehow. check this later
+	if (_values || _sign != signOther)
+		return false;
+
+	return _length == static_cast<size_t>(signOther ? other : -other);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -798,7 +843,7 @@ longNum& longNum::operator +=(const Type other)
 				digitType carryOver(1);
 
 				// 20, not 21. See the comment below.
-				digitType* data = new digitType[20u];
+				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH];
 
 				while (MAX)
 				{
@@ -1190,7 +1235,7 @@ void longNum::opPlusEqual_4(longNum &n1, const longNum &n2)
 			size_t tmp(-1), i(0);
 			digitType carryOver(1);
 
-			digitType* data = new digitType[20u];
+			digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH];
 
 			while (tmp)
 			{
@@ -1720,6 +1765,30 @@ std::string longNum::get() const
 
 // -----------------------------------------------------------------------------------------------
 
+// Returns values as a size_t
+// No check for overflow is performed
+size_t longNum::as_size_t() const
+{
+	if (_values)
+	{
+		size_t res(0);
+
+		for (size_t i = 0; i < _length; ++i)
+		{
+			res *= BASE;
+			res += _values[i];
+		}
+
+		return res;
+	}
+	else
+	{
+		return _length;
+	}
+}
+
+// -----------------------------------------------------------------------------------------------
+
 // Both numbers are long versions
 void longNum::add2positive(const longNum &n1, const longNum &n2, longNum &res) const
 {
@@ -1818,7 +1887,7 @@ void longNum::add2positive_2(const longNum& n1, const longNum& n2, longNum& res)
 		size_t tmp(-1), i(0);
 		digitType carryOver(1);
 
-		res._values = new digitType[20u];
+		res._values = new digitType[longNum_MAX_SIZE_T_LENGTH];
 
 		while (tmp)
 		{
@@ -1949,7 +2018,7 @@ void longNum::add2positive(const longNum &n1, const Type n2, longNum &res) const
 			size_t MAX(-1), i(0);
 			digitType carryOver(1);
 
-			res._values = new digitType[20u];
+			res._values = new digitType[longNum_MAX_SIZE_T_LENGTH];
 
 			while (MAX)
 			{
@@ -2298,13 +2367,17 @@ int longNum::absValueIsLarger(const longNum &n1, const longNum &n2) const
 void longNum::convertToSizeT_ifPossible()
 {
 	// max size_t = 18446744073709551615
+#if defined _IS_LESSER_
+	static digitType maxSizeT[] = { 5, 3, 5, 5, 6 };
+#else
 	static digitType maxSizeT[] = { 5, 1, 6, 1, 5, 5, 9, 0, 7, 3, 7, 0, 4, 4, 7, 6, 4, 4, 8, 1 };
+#endif
 
-	if (_length < 21u)
+	if (_length < longNum_MAX_SIZE_T_LENGTH_PLUS_ONE)
 	{
 		size_t i(_length);
 
-		if (_length == 20)
+		if (_length == longNum_MAX_SIZE_T_LENGTH)
 		{
 			// Check if the number is larger than max size_t
 			while (i--)
@@ -2333,6 +2406,214 @@ void longNum::convertToSizeT_ifPossible()
 	}
 
 	return;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+void longNum::flipSign()
+{
+	_sign = !_sign;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+#if defined _IS_LESSER_
+  #undef size_t
+#endif
+
+#if defined _TRACE_
+  #undef _TRACE_
+#endif
+
+// -----------------------------------------------------------------------------------------------
+
+int testLesser(const long N)
+{
+	int percentage = 0;
+
+	auto getPercentage = [](const long N, const long i)
+	{
+		long MAX = 2 * N + 1;
+		return (100 * (N + i)) / MAX;
+	};
+
+	auto populateMap = [](const long N, std::map<long, longNum> &map)
+	{
+		map.clear();
+
+		for (long i = 0; i <= N; i++)
+		{
+			if (i > unsigned short int(-1))
+			{
+				char arr[10] = { 0 };
+				long len = 0, ii(i);
+
+				while (ii)
+				{
+					len++;
+					ii /= 10;
+				}
+
+				ii = i;
+				arr[len] = '\0';
+
+				while (ii)
+				{
+					arr[--len] = ii % 10 + 48;
+					ii /= 10;
+				}
+
+				map[+i] = longNum(arr);
+				map[-i] = longNum(arr);
+				map[-i].flipSign();
+			}
+		}
+	};
+
+	auto getLongNum = [](const long i, std::map<long, longNum>& m) -> longNum *
+	{
+		static long nMAX = unsigned short int(-1) * (-1);
+		static long pMAX = unsigned short int(-1);
+
+		if (i >= nMAX && i <= pMAX)
+		{
+			return nullptr;
+		}
+
+		return &(m[i]);
+	};
+
+	// --------------------------------------------------------------------
+
+	std::map<long, longNum> mMap;
+
+	std::cout << " populating map...";
+	populateMap(N, mMap);
+	std::cout << " done " << std::endl;
+
+	// --------------------------------------------------------------------
+
+	std::cout << " --- " << percentage << "%" << std::endl;
+
+	longNum* ptr = nullptr;
+
+	if(0)
+	{
+		long num = -465;
+
+		ptr = getLongNum(num, mMap);
+		longNum n1 = longNum(ptr ? (*ptr) : num);
+
+		num = -66001;
+
+		ptr = getLongNum(num, mMap);
+		longNum n2 = longNum(ptr ? (*ptr) : num);
+
+		return 0;
+	}
+
+	for (long i = -N; i <= N; i++)
+	{
+		for (long j = -N; j <= N; j++)
+		{
+			ptr = getLongNum(i, mMap);
+
+			// operator =
+			{
+				longNum n1 = longNum(ptr ? (*ptr) : i);
+				longNum n2 = longNum(ptr ? (*ptr) : i);
+				longNum n3;
+
+				n3 = n1;
+
+				if (n3 != n1)
+				{
+					std::cout << " -- ERROR 1 in operator = : " << i << " = " << j << std::endl;
+					return 1;
+				}
+
+				n3 = i;
+
+				if (n3 != i)
+				{
+					std::cout << " -- ERROR 2 in operator = : " << i << " = " << j << std::endl;
+					return 1;
+				}
+
+				if (n1 != n2)
+				{
+					std::cout << " -- ERROR 3 in operator = : const values changed" << std::endl;
+					return 1;
+				}
+			}
+
+			// --------------------------------------------------------------------------
+
+			// operator ==
+			{
+				ptr = getLongNum(i, mMap);
+				longNum n1 = longNum(ptr ? (*ptr) : i);
+
+				ptr = getLongNum(j, mMap);
+				longNum n2 = longNum(ptr ? (*ptr) : j);
+
+				if ((i == j) != (n1 == n2))
+				{
+					std::cout << " -- ERROR 1 in operator == : " << i << " == " << j << std::endl;
+					return 1;
+				}
+
+				if ((i == j) != (n1 == j))
+				{
+					std::cout << " -- ERROR 2 in operator == : " << i << " == " << j << std::endl;
+					return 1;
+				}
+
+				if (n1 != i || n2 != j)
+				{
+					std::cout << " -- ERROR 3 in operator == : const values changed (" << i << " == " << j << ")" << std::endl;
+					return 1;
+				}
+			}
+
+			// --------------------------------------------------------------------------
+#if 0
+			// operator !=
+			{
+				longNum n1 = getLongNum(i), n2 = getLongNum(j);
+
+				if ((i != j) != (n1 != n2))
+				{
+					std::cout << " -- ERROR 1 in operator != : " << i << " != " << j << std::endl;
+					return 1;
+				}
+
+				if ((i != j) != (n1 != j))
+				{
+					std::cout << " -- ERROR 2 in operator != : " << i << " != " << j << std::endl;
+					return 1;
+				}
+
+				if (n1 != i || n2 != j)
+				{
+					std::cout << " -- ERROR 3 in operator != : const values changed" << std::endl;
+					return 1;
+				}
+			}
+#endif
+			// --------------------------------------------------------------------------
+		}
+
+		int prct = getPercentage(N, i);
+
+		if (prct != percentage)
+		{
+			percentage = prct;
+			std::cout << " --- " << percentage << "%" << std::endl;
+		}
+	}
+
+	return 0;
 }
 
 // -----------------------------------------------------------------------------------------------

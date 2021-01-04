@@ -5505,68 +5505,17 @@ void func80()
 
 void func81()
 {
-	if ( 0 )
+
+#if 1
 	{
-		doPrint("[] - []");
-		longNum n01("533333333333333333333");
-		longNum n02("311111111111111111111");
-		longNum res = n01 - n02;
-		doPrint(n01.get());
-		doPrint(n02.get());
-		doPrint(res.get());
-		doPrint("");
+		//long N = 111111;
+		long N = 66001;
 
-		doPrint("[] - size_t");
-		longNum n03("533333333333333333333");
-		longNum n04("11111111111111111111");
-		res = n03 - n04;
-		doPrint(n03.get());
-		doPrint(n04.get());
-		doPrint(res.get());
-		doPrint("");
-
-		doPrint("size_t - [] -- 1");
-		longNum n05("11111111111111111111");
-		longNum n06("533333333333333333333");
-		res = n05 - n06;
-		doPrint(n05.get());
-		doPrint(n06.get());
-		doPrint(res.get());
-		doPrint("");
-
-		doPrint("size_t - [] -- 2");
-		longNum n05_2("18446744073709551615");
-		longNum n06_2("18446744073709551617");
-		res = n05_2 - n06_2;
-		doPrint(n05_2.get());
-		doPrint(n06_2.get());
-		doPrint(res.get());
-		doPrint("");
-
-		doPrint("size_t - size_t");
-		longNum n07("11111111111111110111");
-		longNum n08("11111111111111111111");
-		res = n07 - n08;
-		doPrint(n07.get());
-		doPrint(n08.get());
-		doPrint(res.get());
-		doPrint("");
-
-/*
-		longNum n1("+184467440737095516151");
-		longNum n2("-184467440737095516152");
-*/
-
-//		longNum n1("18446744073709551615");
-//		longNum n2("18446744073709551617");
-
-/*
-		wrong sign here :( --- goes to line 1999
-		need to make _length unsigned short --- then i'll be able to test 'long' numbers uisng greater standard types
-*/
-
+		int answer = testLesser(N);
+		std::cout << " errors: " << answer << std::endl;
 		return;
 	}
+#endif
 
 #if 1
 	size_t doStop = 0, answer = 0;
