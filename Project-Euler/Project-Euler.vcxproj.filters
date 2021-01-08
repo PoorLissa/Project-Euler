@@ -53,6 +53,9 @@
     <ClCompile Include="Project-Euler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="__longNum.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram8.cd" />
