@@ -17,7 +17,7 @@
 // -----------------------------------------------------------------------------------------------
 
 //#define _TRACE_
-#define _IS_LESSER_
+//#define _IS_LESSER_							// Needed only for testing
 
 #if !defined _IS_LESSER_
 
@@ -51,9 +51,13 @@ constexpr bool NEG = false;
 
 // -----------------------------------------------------------------------------------------------
 
+void	aaa();
 int		testLesser(const long);
 void	testOperatorMinus();
-void	testOperatorPlus();
+void	testOperatorMinusTemplated();
+void	testOperatorPlusTemplated();
+void	testOperatorPlusEquals();
+void	testOperatorPlusEqualsTemplated();
 
 // -----------------------------------------------------------------------------------------------
 
@@ -163,6 +167,7 @@ class longNum {
 		void opPlusEqual_4(longNum&, const longNum&);												// operator += helper 4
 
 	private:
+		// Do NOT change order! All the constructors rely on the definition order
 		bool		_sign;
 		size_t		_length;
 		digitType* _values;

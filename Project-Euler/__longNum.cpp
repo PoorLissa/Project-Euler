@@ -7,6 +7,7 @@
 // Main Class Contents
 #if 1
 
+// TODO: try to make it a bit faster
 longNum::longNum(const char* str) : _values(nullptr), _length(strlen(str)), _sign(POS)
 {
 	// Get sign and skip first symbol
@@ -121,7 +122,7 @@ longNum::longNum(const long num) : _sign(num >= 0), _length(_sign ? num : -num),
 {
 #if defined _IS_LESSER_
 
-	// When _IS_LESSER_ is defined, all the numbers > longNum_MAX_SHORT_VALUE will be created as array-based
+	// When _IS_LESSER_ is defined, all the numbers > longNum_MAX_VALUE will be created as array-based
 	long NUM(_sign ? num : -num);
 
 	if (NUM <= longNum_MAX_VALUE)
@@ -313,6 +314,15 @@ bool longNum::operator ==(const Type other) const
 
 // -----------------------------------------------------------------------------------------------
 
+// TODO: make this work
+template <>
+bool longNum::operator ==(const char *str) const
+{
+	return true;
+}
+
+// -----------------------------------------------------------------------------------------------
+
 bool longNum::operator !=(const longNum& other) const
 {
 	return !(*this == other);
@@ -390,6 +400,15 @@ bool longNum::operator >(const Type other) const
 
 // -----------------------------------------------------------------------------------------------
 
+// TODO: make this work
+template <>
+bool longNum::operator >(const char* str) const
+{
+	return true;
+}
+
+// -----------------------------------------------------------------------------------------------
+
 bool longNum::operator >=(const longNum& other) const
 {
 	if (_sign > other._sign)
@@ -448,6 +467,15 @@ bool longNum::operator >=(const Type other) const
 		return _length >= static_cast<size_t>(other);
 
 	return _length <= static_cast<size_t>(-other);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// TODO: make this work
+template <>
+bool longNum::operator >=(const char* str) const
+{
+	return true;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -514,6 +542,15 @@ bool longNum::operator <(const Type other) const
 
 // -----------------------------------------------------------------------------------------------
 
+// TODO: make this work
+template <>
+bool longNum::operator <(const char* str) const
+{
+	return true;
+}
+
+// -----------------------------------------------------------------------------------------------
+
 bool longNum::operator <=(const longNum& other) const
 {
 	if (_sign < other._sign)
@@ -576,6 +613,15 @@ bool longNum::operator <=(const Type other) const
 
 // -----------------------------------------------------------------------------------------------
 
+// TODO: make this work
+template <>
+bool longNum::operator <=(const char* str) const
+{
+	return true;
+}
+
+// -----------------------------------------------------------------------------------------------
+
 longNum longNum::operator +(const longNum& other) const
 {
 	longNum res;
@@ -600,15 +646,15 @@ longNum longNum::operator +(const Type other) const
 {
 #if 0
 
-	// 85.163
 	return std::move(*this + longNum(other));
 
 #else
 
-	// 86.5
+	// This version is only SLIGHTLY faster
 	longNum res;
+	res._sign = other >= 0;
 
-	if (_sign == (other >= 0))
+	if (_sign == res._sign)
 	{
 		// Templated version
 		add2positive(*this, other, res);
@@ -623,6 +669,15 @@ longNum longNum::operator +(const Type other) const
 	return std::move(res);
 
 #endif
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// TODO: make this work
+template <>
+longNum longNum::operator +(const char* str) const
+{
+	return longNum(0);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -691,6 +746,7 @@ longNum& longNum::operator +=(longNum&& other) noexcept
 
 // []		+ Type
 // size_t	+ Type
+// optimized
 template <class Type>
 longNum& longNum::operator +=(const Type other)
 {
@@ -698,29 +754,33 @@ longNum& longNum::operator +=(const Type other)
 
 	if (_values)
 	{
-		// [] += Type
 		if (_sign == (other >= 0))
 		{
-			// Perform adding in place
-			digitType carryOver(0);
-
 			if (*ptr < 0)
 				*ptr = -*ptr;
+			// [] += Type
 
-			for (size_t i = 0; i < _length; ++i)
+			// Perform adding in place
+			size_t i(0u);
+			digitType nRes(0), carryOver(0);
+
+			while (other)
 			{
-				_values[i] += carryOver;
+				nRes = _values[i] + other % BASE + carryOver;
 
-				if (other)
-				{
-					_values[i] += other % BASE;
-					*ptr /= BASE;
-				}
+				*ptr /= BASE;
 
-				carryOver = (_values[i] >= BASE) ? 1u : 0u;
+				carryOver = nRes >= BASE ? 1 : 0;
+				_values[i] = carryOver ? nRes - BASE : nRes;
+				++i;
+			}
 
-				if (carryOver)
-					_values[i] %= BASE;
+			for (; carryOver && i < _length; ++i)
+			{
+				nRes = _values[i] + carryOver;
+
+				carryOver = nRes >= BASE ? 1 : 0;
+				_values[i] = carryOver ? nRes - BASE : nRes;
 			}
 
 			// If carryOver > 0, we need to reallocate and normalize
@@ -732,7 +792,6 @@ longNum& longNum::operator +=(const Type other)
 				digitType* data = new digitType[_length + 1u];
 
 				memcpy(data, _values, sizeof(digitType) * _length);
-
 				data[_length++] = carryOver;
 
 				delete[] _values;
@@ -741,46 +800,50 @@ longNum& longNum::operator +=(const Type other)
 		}
 		else
 		{
-			// |*this| always > |other| -- No need for realloc. Subtract numbers in place
-
-			size_t cnt(0);
-
+			// [] -= Type
 			if (*ptr < 0)
 				*ptr = -*ptr;
 
-			for (size_t i = 0; i < _length; ++i)
+			// Subtract numbers in place
+			size_t cnt(0u), i(0u);
+			digitType nRes(0), carryOver(0);
+
+			while (other)
 			{
-				if (other)
-				{
-					_values[i] -= other % BASE;
-					*ptr /= BASE;
-				}
+				nRes = _values[i] - (other % BASE + carryOver);
 
-				if (_values[i] < 0)
-				{
-					_values[i + 1]--;
-					_values[i] += BASE;
-				}
+				*ptr /= BASE;
 
+				carryOver = nRes >= 0 ? 0 : 1;
+				_values[i] = carryOver ? nRes + BASE : nRes;
+				cnt = _values[i] ? 0 : cnt + 1u;
+				++i;
+			}
+
+			for (; (cnt || carryOver) && i < _length; ++i)
+			{
+				nRes = _values[i] - carryOver;
+
+				carryOver = nRes >= 0 ? 0 : 1;
+				_values[i] = carryOver ? nRes + BASE : nRes;
 				cnt = _values[i] ? 0 : cnt + 1u;
 			}
 
-			// Adjust the length, so leading zeroes will be trimmed out
 			_length -= cnt;
 
-			// Value has reduced...
+			// Need to check if we can store the number as a size_t
 			convertToSizeT_ifPossible();
 		}
 	}
 	else
 	{
-		// size_t += Type
 		if (_sign == (other >= 0))
 		{
-			// Add the numbers and keep the sign
+			// size_t += Type
 			if (*ptr < 0)
 				*ptr = -*ptr;
 
+			// Add the numbers and keep the sign
 			size_t length = _length + other;
 
 #if defined _IS_LESSER_
@@ -791,26 +854,34 @@ longNum& longNum::operator +=(const Type other)
 #if defined _TRACE_
 				std::cout << " ---> Alloc (operator += <Type>)" << std::endl;
 #endif
-				size_t MAX(longNum_MAX_VALUE), i(0);
-				digitType carryOver(0);
+				size_t MAX(longNum_MAX_VALUE), i(0u);
+				digitType nRes(0), carryOver(0);
+
+				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH];
+
+				// Imitate size_t overflow
 				length -= longNum_MAX_VALUE;
 
-				// 20, not 21. See the comment below.
-				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH];
+				while (length)
+				{
+					nRes = MAX % BASE + length % BASE + carryOver;
+
+					length /= BASE;
+					MAX /= BASE;
+
+					carryOver = nRes >= BASE ? 1 : 0;
+					data[i] = carryOver ? nRes - BASE : nRes;
+					++i;
+				}
 
 				while (MAX)
 				{
-					data[i] = MAX % BASE + carryOver;
-
-					if (length)
-					{
-						data[i] += length % BASE;
-						length /= BASE;
-					}
+					nRes = MAX % BASE + carryOver;
 
 					MAX /= BASE;
-					carryOver = (data[i] >= BASE) ? 1u : 0u;
-					data[i] = data[i] % BASE;
+
+					carryOver = nRes >= BASE ? 1 : 0;
+					data[i] = carryOver ? nRes - BASE : nRes;
 					++i;
 				}
 
@@ -828,38 +899,36 @@ longNum& longNum::operator +=(const Type other)
 			if (length < _length || length < other)
 			{
 #if defined _TRACE_
-				std::cout << " ---> Alloc (operator += <Type>)" << std::endl;
+				std::cout << " ---> Alloc (opPlusEqual_4)" << std::endl;
 #endif
-				size_t MAX(longNum_MAX_VALUE), i(0);
-				digitType carryOver(1);
 
-				// 20, not 21. See the comment below.
+				size_t MAX(longNum_MAX_VALUE), i(0u);
+				digitType nRes(0), carryOver(1);
+
 				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH];
 
-				while (MAX)
+				while (length)
 				{
-					data[i] = MAX % BASE + carryOver;
+					nRes = MAX % BASE + length % BASE + carryOver;
 
-					if (length)
-					{
-						data[i] += length % BASE;
-						length /= BASE;
-					}
-
+					length /= BASE;
 					MAX /= BASE;
-					carryOver = (data[i] >= BASE) ? 1u : 0u;
-					data[i] = data[i] % BASE;
+
+					carryOver = nRes >= BASE ? 1 : 0;
+					data[i] = carryOver ? nRes - BASE : nRes;
 					++i;
 				}
 
-				// Never going to hit this piece, as max numbers that allow us entering this branch of code
-				// are size_t(-1) == 18446744073709551615
-				// The sum of two such numbers is 36893488147419103230, which is still 20 digits long
-				// So no carryOver at this point.
-#if 0
-				if (carryOver)
-					data[i] = 1u;
-#endif
+				while (MAX)
+				{
+					nRes = MAX % BASE + carryOver;
+
+					MAX /= BASE;
+
+					carryOver = nRes >= BASE ? 1 : 0;
+					data[i] = carryOver ? nRes - BASE : nRes;
+					++i;
+				}
 
 				_length = i;
 				_values = data;
@@ -873,10 +942,11 @@ longNum& longNum::operator +=(const Type other)
 		}
 		else
 		{
-			// Subtract lesser from greater and keep the greater's sign
+			// size_t -= Type
 			if (*ptr < 0)
 				*ptr = -*ptr;
 
+			// Subtract lesser from greater and keep the greater's sign
 			if (_length < other)
 			{
 				_length = other - _length;
@@ -897,7 +967,17 @@ longNum& longNum::operator +=(const Type other)
 
 // -----------------------------------------------------------------------------------------------
 
+// TODO: make this work
+template <>
+longNum& longNum::operator +=(const char* str)
+{
+	return *this;
+}
+
+// -----------------------------------------------------------------------------------------------
+
 // operator += helper 1 ([] += [])
+// optimized
 void longNum::opPlusEqual_1(longNum& n1, const longNum& n2) const
 {
 #if 0
@@ -919,18 +999,23 @@ void longNum::opPlusEqual_1(longNum& n1, const longNum& n2) const
 		else
 		{
 			// Perform adding in place
-			digitType carryOver = 0u, nRes = 0u;
+			size_t i(0u);
+			digitType carryOver(0), nRes(0);
 
-			for (size_t i = 0; i < n1._length; ++i)
+			for (; i < n2._length; ++i)
+			{
+				nRes = n1._values[i] + n2._values[i] + carryOver;
+
+				carryOver = nRes >= BASE ? 1 : 0;
+				n1._values[i] = carryOver ? nRes - BASE : nRes;
+			}
+
+			for (; carryOver && i < n1._length; ++i)
 			{
 				nRes = n1._values[i] + carryOver;
 
-				if (i < n2._length)
-					nRes += n2._values[i];
-
-				n1._values[i] = nRes % BASE;
-
-				carryOver = (nRes >= BASE) ? 1u : 0u;
+				carryOver = nRes >= BASE ? 1 : 0;
+				n1._values[i] = carryOver ? nRes - BASE : nRes;
 			}
 
 			// If carryOver > 0, we need to reallocate and normalize
@@ -939,14 +1024,13 @@ void longNum::opPlusEqual_1(longNum& n1, const longNum& n2) const
 #if defined _TRACE_
 				std::cout << " ---> Alloc (opPlusEqual_1)" << std::endl;
 #endif
-				digitType* newVal = new digitType[n1._length + 1u];
+				digitType* data = new digitType[n1._length + 1u];
 
-				memcpy(newVal, n1._values, sizeof(digitType) * n1._length);
-
-				newVal[n1._length++] = carryOver;
+				memcpy(data, n1._values, sizeof(digitType) * n1._length);
+				data[n1._length++] = carryOver;
 
 				delete[] n1._values;
-				n1._values = newVal;
+				n1._values = data;
 			}
 		}
 	}
@@ -971,54 +1055,38 @@ void longNum::opPlusEqual_1(longNum& n1, const longNum& n2) const
 			const longNum* pn1(&n1);
 			const longNum* pn2(&n2);
 
-			digitType* res = pn1->_values;
-
-			size_t i(0), cnt(0);
+			size_t i(0u), cnt(0u);
+			digitType nRes(0), carryOver(0);
 
 			if (isGreater == 2)
 			{
+				// n1 < n2: Will need another buffer to store the result
+
 #if defined _TRACE_
 				std::cout << " ---> Alloc tmp buffer (opPlusEqual_1)" << std::endl;
 #endif
-				// n1 < n2: Will need another buffer for the result
 				pn1 = &n2;
 				pn2 = &n1;
 
-				size_t len_minus_one = pn1->_length - 1;
-
-				res = new digitType[pn1->_length];
-				res[0] = pn1->_values[0];
+				digitType* res = new digitType[pn1->_length];
 
 				for (; i < pn2->_length; ++i)
 				{
-					if (i < len_minus_one)
-						res[i + 1] = pn1->_values[i + 1];
+					nRes = pn1->_values[i] - (pn2->_values[i] + carryOver);
 
-					while (res[i] < pn2->_values[i])
-					{
-						res[i + 1]--;
-						res[i] += BASE;
-					}
-
-					res[i] -= pn2->_values[i];
-					cnt = res[i] ? 0 : cnt + 1;
+					carryOver = nRes >= 0 ? 0 : 1;
+					res[i] = carryOver ? nRes + BASE : nRes;
+					cnt = res[i] ? 0 : cnt + 1u;
 				}
 
 				for (; i < pn1->_length; ++i)
 				{
-					if (i < len_minus_one)
-						res[i + 1] = pn1->_values[i + 1];
+					nRes = pn1->_values[i] - carryOver;
 
-					while (res[i] < 0)
-					{
-						res[i + 1]--;
-						res[i] += BASE;
-					}
-
-					cnt = res[i] ? 0 : cnt + 1;
+					carryOver = nRes >= 0 ? 0 : 1;
+					res[i] = carryOver ? nRes + BASE : nRes;
+					cnt = res[i] ? 0 : cnt + 1u;
 				}
-
-				n1._length = pn1->_length - cnt;			// Adjust the length, so leading zeroes will be trimmed out
 
 				delete[] n1._values;
 				n1._values = res;
@@ -1026,34 +1094,29 @@ void longNum::opPlusEqual_1(longNum& n1, const longNum& n2) const
 			else
 			{
 				// n1 > n2: No need for realloc. Subtract numbers in place
+
 				for (; i < pn2->_length; ++i)
 				{
-					while (res[i] < pn2->_values[i])
-					{
-						res[i + 1]--;
-						res[i] += BASE;
-					}
+					nRes = pn1->_values[i] - (pn2->_values[i] + carryOver);
 
-					res[i] = pn1->_values[i] - pn2->_values[i];
-					cnt = res[i] ? 0 : cnt + 1;
+					carryOver = nRes >= 0 ? 0 : 1;
+					n1._values[i] = carryOver ? nRes + BASE : nRes;
+					cnt = n1._values[i] ? 0 : cnt + 1u;
 				}
 
-				for (; i < pn1->_length; ++i)
+				// When cnt == 0 and carryOver == 0, we break out of the loop
+				for (; (cnt || carryOver) && i < pn1->_length; ++i)
 				{
-					while (pn1->_values[i] < 0)
-					{
-						pn1->_values[i + 1]--;
-						pn1->_values[i] += BASE;
-					}
+					nRes = pn1->_values[i] - carryOver;
 
-					res[i] = pn1->_values[i];
-					cnt = res[i] ? 0 : cnt + 1;
+					carryOver = nRes >= 0 ? 0 : 1;
+					n1._values[i] = carryOver ? nRes + BASE : nRes;
+					cnt = n1._values[i] ? 0 : cnt + 1u;
 				}
-
-				n1._length -= cnt;							// Adjust the length, so leading zeroes will be trimmed out
 			}
 
-			n1._sign = pn1->_sign;							// Sign is determined by the greater number (in absolute terms)
+			n1._sign   = pn1->_sign;						// Sign is determined by the greater number (in absolute terms)
+			n1._length = pn1->_length - cnt;				// Adjust the length, so leading zeroes will be trimmed out
 
 			// Value has reduced...
 			n1.convertToSizeT_ifPossible();
@@ -1067,29 +1130,35 @@ void longNum::opPlusEqual_1(longNum& n1, const longNum& n2) const
 // -----------------------------------------------------------------------------------------------
 
 // operator += helper 2 ([] += size_t)
+// optimized
 void longNum::opPlusEqual_2(longNum& n1, const longNum& n2)
 {
-	size_t tmp(n2._length);
+	// abs(n1) always > abs(n2)
+
+	size_t tmp(n2._length), i(0u);
 
 	if (n1._sign == n2._sign)
 	{
 		// Perform adding in place
-		digitType carryOver(0);
+		digitType nRes(0), carryOver(0);
 
-		for (size_t i = 0; i < n1._length; ++i)
+		while (tmp)
 		{
-			n1._values[i] += carryOver;
+			nRes = n1._values[i] + tmp % BASE + carryOver;
 
-			if (tmp)
-			{
-				n1._values[i] += tmp % BASE;
-				tmp /= BASE;
-			}
+			tmp /= BASE;
 
-			carryOver = (n1._values[i] >= BASE) ? 1u : 0u;
+			carryOver = nRes >= BASE ? 1 : 0;
+			n1._values[i] = carryOver ? nRes - BASE : nRes;
+			++i;
+		}
 
-			if (carryOver)
-				n1._values[i] %= BASE;
+		for (; carryOver && i < n1._length; ++i)
+		{
+			nRes = n1._values[i] + carryOver;
+
+			carryOver = nRes >= BASE ? 1 : 0;
+			n1._values[i] = carryOver ? nRes - BASE : nRes;
 		}
 
 		// If carryOver > 0, we need to reallocate and normalize
@@ -1098,43 +1167,46 @@ void longNum::opPlusEqual_2(longNum& n1, const longNum& n2)
 #if defined _TRACE_
 			std::cout << " ---> Alloc (opPlusEqual_2)" << std::endl;
 #endif
-			digitType* newVal = new digitType[n1._length + 1u];
+			digitType* data = new digitType[n1._length + 1u];
 
-			memcpy(newVal, n1._values, sizeof(digitType) * n1._length);
-
-			newVal[n1._length++] = carryOver;
+			memcpy(data, n1._values, sizeof(digitType)* n1._length);
+			data[n1._length++] = carryOver;
 
 			delete[] n1._values;
-			n1._values = newVal;
+			n1._values = data;
 		}
 	}
 	else
 	{
-		// |n1| always > |n2| -- No need for realloc. Subtract numbers in place
+		// Subtract numbers in place
 
-		size_t cnt(0);
+		size_t cnt(0u);
+		digitType nRes(0), carryOver(0);
 
-		for (size_t i = 0; i < n1._length; ++i)
+		while (tmp)
 		{
-			if (tmp)
-			{
-				n1._values[i] -= (tmp % BASE);
-				tmp /= BASE;
-			}
+			nRes = n1._values[i] - (tmp % BASE + carryOver);
 
-			if (n1._values[i] < 0)
-			{
-				n1._values[i + 1]--;
-				n1._values[i] += BASE;
-			}
+			tmp /= BASE;
 
+			carryOver = nRes >= 0 ? 0 : 1;
+			n1._values[i] = carryOver ? nRes + BASE : nRes;
+			cnt = n1._values[i] ? 0 : cnt + 1u;
+			++i;
+		}
+
+		for (; (cnt || carryOver) && i < n1._length; ++i)
+		{
+			nRes = n1._values[i] - carryOver;
+
+			carryOver = nRes >= 0 ? 0 : 1;
+			n1._values[i] = carryOver ? nRes + BASE : nRes;
 			cnt = n1._values[i] ? 0 : cnt + 1u;
 		}
 
-		// Adjust the length, so leading zeroes will be trimmed out
 		n1._length -= cnt;
 
-		// Value has reduced...
+		// Need to check if we can store the number as a size_t
 		n1.convertToSizeT_ifPossible();
 	}
 
@@ -1144,64 +1216,77 @@ void longNum::opPlusEqual_2(longNum& n1, const longNum& n2)
 // -----------------------------------------------------------------------------------------------
 
 // operator += helper 3 (size_t += [])
+// optimized
 void longNum::opPlusEqual_3(longNum& n1, const longNum& n2)
 {
+	// abs(n1) always < abs(n2)
+
 #if defined _TRACE_
 	std::cout << " ---> Alloc (opPlusEqual_3)" << std::endl;
 #endif
 
-	size_t tmp(n1._length);
-	digitType carryOver(0);
+	size_t tmp(n1._length), i(0u), cnt(0u);
+	digitType nRes(0), carryOver(0);
 
 	if (n1._sign == n2._sign)
 	{
 		n1._values = new digitType[n2._length + 1u];
 
-		for (n1._length = 0; n1._length < n2._length; ++n1._length)
+		while (tmp)
 		{
-			n1._values[n1._length] = n2._values[n1._length] + carryOver;
+			nRes = n2._values[i] + tmp % BASE + carryOver;
 
-			if (tmp)
-			{
-				n1._values[n1._length] += tmp % BASE;
-				tmp /= BASE;
-			}
+			tmp /= BASE;
 
-			carryOver = (n1._values[n1._length] >= BASE) ? 1u : 0u;
-			n1._values[n1._length] %= BASE;
+			carryOver = nRes >= BASE ? 1 : 0;
+			n1._values[i] = carryOver ? nRes - BASE : nRes;
+			++i;
+		}
+
+		for (; i < n2._length; ++i)
+		{
+			nRes = n2._values[i] + carryOver;
+
+			carryOver = nRes >= BASE ? 1 : 0;
+			n1._values[i] = carryOver ? nRes - BASE : nRes;
 		}
 
 		if (carryOver)
 		{
-			n1._values[n1._length++] = 1u;
+			n1._values[i++] = carryOver;
 		}
+
+		n1._length = i;
 	}
 	else
 	{
-		// |n1| always < |n2|
-
-		size_t cnt(0);
 		n1._values = new digitType[n2._length];
 
-		for (n1._length = 0; n1._length < n2._length; ++n1._length)
+		while (tmp)
 		{
-			n1._values[n1._length] = n2._values[n1._length] - tmp % BASE - carryOver;
+			nRes = n2._values[i] - (tmp % BASE + carryOver);
+
 			tmp /= BASE;
 
-			carryOver = (n1._values[n1._length] < 0) ? 1 : 0;
-
-			if (carryOver)
-			{
-				n1._values[n1._length] += BASE;
-			}
-
-			cnt = n1._values[n1._length] ? 0 : cnt + 1u;
+			carryOver = nRes >= 0 ? 0 : 1;
+			n1._values[i] = carryOver ? nRes + BASE : nRes;
+			cnt = n1._values[i] ? 0 : cnt + 1u;
+			++i;
 		}
 
-		n1._length -= cnt;
-		n1._sign = !n1._sign;
+		for (; i < n2._length; ++i)
+		{
+			nRes = n2._values[i] - carryOver;
 
-		// Value has reduced...
+			carryOver = nRes >= 0 ? 0 : 1;
+			n1._values[i] = carryOver ? nRes + BASE : nRes;
+			cnt = n1._values[i] ? 0 : cnt + 1u;
+		}
+
+		n1._length = i - cnt;
+		n1._sign = n2._sign;
+
+		// Need to check if we can store the number as a size_t
 		n1.convertToSizeT_ifPossible();
 	}
 
@@ -1211,6 +1296,7 @@ void longNum::opPlusEqual_3(longNum& n1, const longNum& n2)
 // -----------------------------------------------------------------------------------------------
 
 // operator += helper 4 (size_t += size_t)
+// optimized
 void longNum::opPlusEqual_4(longNum& n1, const longNum& n2)
 {
 	if (n1._sign == n2._sign)
@@ -1228,25 +1314,34 @@ void longNum::opPlusEqual_4(longNum& n1, const longNum& n2)
 			std::cout << " ---> Alloc (opPlusEqual_4)" << std::endl;
 #endif
 
-			size_t tmp(longNum_MAX_VALUE), i(0);
-			digitType carryOver(0);
-			length -= longNum_MAX_VALUE;
+			size_t MAX(longNum_MAX_VALUE), i(0u);
+			digitType nRes(0), carryOver(0);
 
 			digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH];
 
-			while (tmp)
+			// Imitate size_t overflow
+			length -= longNum_MAX_VALUE;
+
+			while (length)
 			{
-				data[i] = tmp % BASE + carryOver;
+				nRes = MAX % BASE + length % BASE + carryOver;
 
-				if (length)
-				{
-					data[i] += length % BASE;
-					length /= BASE;
-				}
+				length /= BASE;
+				MAX /= BASE;
 
-				tmp /= BASE;
-				carryOver = (data[i] >= BASE) ? 1u : 0u;
-				data[i] = data[i] % BASE;
+				carryOver = nRes >= BASE ? 1 : 0;
+				data[i] = carryOver ? nRes - BASE : nRes;
+				++i;
+			}
+
+			while (MAX)
+			{
+				nRes = MAX % BASE + carryOver;
+
+				MAX /= BASE;
+
+				carryOver = nRes >= BASE ? 1 : 0;
+				data[i] = carryOver ? nRes - BASE : nRes;
 				++i;
 			}
 
@@ -1267,24 +1362,31 @@ void longNum::opPlusEqual_4(longNum& n1, const longNum& n2)
 			std::cout << " ---> Alloc (opPlusEqual_4)" << std::endl;
 #endif
 
-			size_t tmp(-1), i(0);
-			digitType carryOver(1);
+			size_t MAX(longNum_MAX_VALUE), i(0u);
+			digitType nRes(0), carryOver(1);
 
 			digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH];
 
-			while (tmp)
+			while (length)
 			{
-				data[i] = tmp % BASE + carryOver;
+				nRes = MAX % BASE + length % BASE + carryOver;
 
-				if (length)
-				{
-					data[i] += length % BASE;
-					length /= BASE;
-				}
+				length /= BASE;
+				MAX /= BASE;
 
-				tmp /= BASE;
-				carryOver = (data[i] >= BASE) ? 1u : 0u;
-				data[i] = data[i] % BASE;
+				carryOver = nRes >= BASE ? 1 : 0;
+				data[i] = carryOver ? nRes - BASE : nRes;
+				++i;
+			}
+
+			while (MAX)
+			{
+				nRes = MAX % BASE + carryOver;
+
+				MAX /= BASE;
+
+				carryOver = nRes >= BASE ? 1 : 0;
+				data[i] = carryOver ? nRes - BASE : nRes;
 				++i;
 			}
 
@@ -1295,6 +1397,7 @@ void longNum::opPlusEqual_4(longNum& n1, const longNum& n2)
 		{
 			n1._length = length;
 		}
+
 #endif
 	}
 	else
@@ -1348,14 +1451,16 @@ template <class Type>
 longNum	longNum::operator -(const Type other) const
 {
 #if 0
-	// 90.1
+
 	return std::move(*this - longNum(other));
 
 #else
-	// 77.85
-	longNum res;
 
-	if (_sign == (other >= 0))
+	// This version is only SLIGHTLY faster
+	longNum res;
+	res._sign = other >= 0;
+
+	if (_sign == res._sign)
 	{
 		// Templated version
 		if (subtr2positive(*this, other, res))
@@ -1375,173 +1480,53 @@ longNum	longNum::operator -(const Type other) const
 
 // -----------------------------------------------------------------------------------------------
 
+// TODO: make this work
+template <>
+longNum longNum::operator -(const char* str) const
+{
+	return longNum(0);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// pmv tested/optimized until here < --- (not further down the code)
+
+
+
+
 longNum& longNum::operator -=(const longNum& other)
 {
 #if 0
-	* this = *this - other;
+
+	*this = *this - other;
+
 #else
 	// (a -= b) <==> (a += -b)
 	// So copy-paste from operator +=, adjusted for the sign
-	if (_sign != other._sign)
+
+	if (_values)
 	{
-		// In case the sign is the same, we add the numbers and keep the sign.
-		// Also, there's a chance we'll be able to add the 2 numbers without reallocation
-		if (_length < other._length)
+		if (other._values)
 		{
-			// Go with full alloc cycle
-			*this = std::move(*this - other);
+			opPlusEqual_1(*this, other);
 		}
 		else
 		{
-			// Perform adding in place
-			digitType carryOver = 0u, nRes = 0u;
-
-			for (size_t i = 0; i < _length; ++i)
-			{
-				nRes = _values[i] + carryOver;
-
-				if (i < other._length)
-					nRes += other._values[i];
-
-				_values[i] = nRes % BASE;
-
-				carryOver = (nRes >= BASE) ? 1u : 0u;
-			}
-
-			// If carryOver > 0, we need to reallocate and normalize
-			if (carryOver)
-			{
-#if defined _TRACE_
-				std::cout << " ---> Alloc" << std::endl;
-#endif
-				digitType* newVal = new digitType[_length + 1u];
-
-				memcpy(newVal, _values, sizeof(digitType) * _length);
-
-				newVal[_length++] = carryOver;
-
-				delete[] _values;
-				_values = newVal;
-			}
+			opPlusEqual_2(*this, other);
 		}
 	}
 	else
 	{
-		// In case the signs are opposite, we subtract smaller number from the greater and keep the sign of the greater one
-
-		// First, we need to determine which number's absolute value is greater
-		int isGreater = absValueIsLarger(*this, other);
-
-		// The numbers are equal, return 0
-		if (!isGreater)
+		if (other._values)
 		{
-#if defined _TRACE_
-			std::cout << " ---> Alloc for '0' value" << std::endl;
-#endif
-			// TODO: don't reallocate if _length is relatively small
-			// Just set _length to 1 and Values[] to 0
-			// Need to test it later
-			if (_length > 1)
-			{
-				delete[] _values;
-				_values = new digitType[1];
-			}
-
-			_length = 1;
-			_values[0] = 0;
-			_sign = POS;
+			opPlusEqual_3(*this, other);
 		}
 		else
 		{
-			const longNum* pn1(this);
-			const longNum* pn2(&other);
-
-			digitType* res = pn1->_values;
-
-			size_t i(0), cnt(0);
-
-			if (isGreater == 2)
-				//if (_length < other._length)
-			{
-#if defined _TRACE_
-				std::cout << " ---> Alloc tmp buffer" << std::endl;
-#endif
-				// This < other: Will need another buffer for the result
-				pn1 = &other;
-				pn2 = this;
-
-				size_t len_minus_one = pn1->_length - 1;
-
-				res = new digitType[pn1->_length];
-				res[0] = pn1->_values[0];
-
-				for (; i < pn2->_length; ++i)
-				{
-					if (i < len_minus_one)
-						res[i + 1] = pn1->_values[i + 1];
-
-					while (res[i] < pn2->_values[i])
-					{
-						res[i + 1]--;
-						res[i] += BASE;
-					}
-
-					res[i] -= pn2->_values[i];
-					cnt = res[i] ? 0 : cnt + 1;
-				}
-
-				for (; i < pn1->_length; ++i)
-				{
-					if (i < len_minus_one)
-						res[i + 1] = pn1->_values[i + 1];
-
-					while (res[i] < 0)
-					{
-						res[i + 1]--;
-						res[i] += BASE;
-					}
-
-					cnt = res[i] ? 0 : cnt + 1;
-				}
-
-				_length = pn1->_length - cnt;				// Adjust the length, so leading zeroes will be trimmed out
-
-				delete[] _values;
-				_values = res;
-				_sign = !pn1->_sign;
-			}
-			else
-			{
-				// This > other: No need for realloc. Subtract numbers in place
-				for (; i < pn2->_length; ++i)
-				{
-					while (res[i] < pn2->_values[i])
-					{
-						res[i + 1]--;
-						res[i] += BASE;
-					}
-
-					res[i] = pn1->_values[i] - pn2->_values[i];
-					cnt = res[i] ? 0 : cnt + 1;
-				}
-
-				for (; i < pn1->_length; ++i)
-				{
-					while (pn1->_values[i] < 0)
-					{
-						pn1->_values[i + 1]--;
-						pn1->_values[i] += BASE;
-					}
-
-					res[i] = pn1->_values[i];
-					cnt = res[i] ? 0 : cnt + 1;
-				}
-
-				_length -= cnt;								// Adjust the length, so leading zeroes will be trimmed out
-				_sign = pn1->_sign;
-			}
+			opPlusEqual_4(*this, other);
 		}
 	}
+
 #endif
 
 	return *this;
@@ -1566,6 +1551,15 @@ longNum& longNum::operator -=(const Type other)
 {
 	*this -= longNum(other);
 
+	return *this;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// TODO: make this work
+template <>
+longNum& longNum::operator -=(const char* str)
+{
 	return *this;
 }
 
@@ -1843,19 +1837,19 @@ size_t longNum::as_size_t() const
 
 // -----------------------------------------------------------------------------------------------
 
-// Both numbers are long versions
+// operator +/- helper: Adds 2 positive longNums
 void longNum::add2positive(const longNum& n1, const longNum& n2, longNum& res) const
 {
 	if (n1._values)
 	{
 		if (n2._values)
 		{
-			// Add 2 positive numbers: each one is a long version
+			// Add 2 positive numbers: [] + []
 			add2positive_1(n1, n2, res);
 		}
 		else
 		{
-			// Add 2 positive numbers: The first one is an array, the second one is a size_t
+			// Add 2 positive numbers: [] + size_t
 			add2positive_3(n1, n2._length, res);
 		}
 	}
@@ -1863,12 +1857,12 @@ void longNum::add2positive(const longNum& n1, const longNum& n2, longNum& res) c
 	{
 		if (n2._values)
 		{
-			// Add 2 positive numbers: The first one is an array, the second one is a size_t
+			// Add 2 positive numbers: [] + size_t
 			add2positive_3(n2, n1._length, res);
 		}
 		else
 		{
-			// Add 2 positive numbers: Each of the two holds its number as a size_t
+			// Add 2 positive numbers: size_t + size_t
 			add2positive_2(n1, n2, res);
 		}
 	}
@@ -1878,7 +1872,8 @@ void longNum::add2positive(const longNum& n1, const longNum& n2, longNum& res) c
 
 // -----------------------------------------------------------------------------------------------
 
-// Add 2 positive longNums: Each of the two is an array
+// Add 2 positive longNums: [] + []
+// optimized
 void longNum::add2positive_1(const longNum& n1, const longNum& n2, longNum& res) const
 {
 	// The longest number will be the first
@@ -1899,26 +1894,29 @@ void longNum::add2positive_1(const longNum& n1, const longNum& n2, longNum& res)
 	res._values = new digitType[p1->_length + 1u];
 	res._values[p1->_length] = 0u;
 
-	digitType carryOver = 0u, nRes = 0u;
+	digitType carryOver(0), nRes(0);
+	size_t i(0u);
 
-	for (size_t i = 0; i < res._length; ++i)
+	// 2 for-loops work slightly faster than a single one
+	for (; i < p2->_length; ++i)
 	{
-		// This way the code is slightly faster than with a ternary operator
-		{
-			nRes = p1->_values[i] + carryOver;
+		nRes = p1->_values[i] + p2->_values[i] + carryOver;
 
-			if (i < p2->_length)
-				nRes += p2->_values[i];
-		}
+		carryOver = (nRes >= BASE) ? 1 : 0;
+		res._values[i] = carryOver ? nRes - BASE : nRes;
+	}
 
-		res._values[i] = nRes % BASE;
+	for (; i < p1->_length; ++i)
+	{
+		nRes = p1->_values[i] + carryOver;
 
-		carryOver = (nRes >= BASE) ? 1u : 0u;
+		carryOver = (nRes >= BASE) ? 1 : 0;
+		res._values[i] = carryOver ? nRes - BASE : nRes;
 	}
 
 	if (carryOver)
 	{
-		res._values[res._length++] = 1u;
+		res._values[res._length++] = carryOver;
 	}
 
 	return;
@@ -1926,7 +1924,8 @@ void longNum::add2positive_1(const longNum& n1, const longNum& n2, longNum& res)
 
 // -----------------------------------------------------------------------------------------------
 
-// Add 2 positive numbers: Each of the two holds its number as a size_t
+// Add 2 positive numbers: size_t + size_t
+// optimized
 void longNum::add2positive_2(const longNum& n1, const longNum& n2, longNum& res) const
 {
 	res._length = n1._length + n2._length;
@@ -1940,27 +1939,33 @@ void longNum::add2positive_2(const longNum& n1, const longNum& n2, longNum& res)
 		std::cout << " ---> Alloc (add2positive_2)" << std::endl;
 #endif
 
-		size_t tmp(longNum_MAX_VALUE), i(0);
-		digitType carryOver(0);
+		size_t MAX(longNum_MAX_VALUE), i(0u);
+		digitType nRes(0), carryOver(0);
 
 		res._values = new digitType[longNum_MAX_SIZE_T_LENGTH];
 
 		// Imitate size_t overflow
 		res._length -= longNum_MAX_VALUE;
 
-		while (tmp)
+		while (res._length)
 		{
-			res._values[i] = tmp % BASE + carryOver;
+			nRes = MAX % BASE + res._length % BASE + carryOver;
 
-			if (res._length)
-			{
-				res._values[i] += res._length % BASE;
-				res._length /= BASE;
-			}
+			res._length /= BASE;
+			MAX /= BASE;
 
-			tmp /= BASE;
-			carryOver = (res._values[i] >= BASE) ? 1u : 0u;
-			res._values[i] = res._values[i] % BASE;
+			carryOver = nRes >= BASE ? 1 : 0;
+			res._values[i] = carryOver ? nRes - BASE : nRes;
+			++i;
+		}
+
+		while (MAX)
+		{
+			nRes = MAX % BASE + carryOver;
+			MAX /= BASE;
+
+			carryOver = nRes >= BASE ? 1 : 0;
+			res._values[i] = carryOver ? nRes - BASE : nRes;
 			++i;
 		}
 
@@ -1976,24 +1981,30 @@ void longNum::add2positive_2(const longNum& n1, const longNum& n2, longNum& res)
 		std::cout << " ---> Alloc (add2positive_2)" << std::endl;
 #endif
 
-		size_t tmp(longNum_MAX_VALUE), i(0);
-		digitType carryOver(1);
+		size_t MAX(longNum_MAX_VALUE), i(0u);
+		digitType nRes(0), carryOver(1);
 
 		res._values = new digitType[longNum_MAX_SIZE_T_LENGTH];
 
-		while (tmp)
+		while (res._length)
 		{
-			res._values[i] = tmp % BASE + carryOver;
+			nRes = MAX % BASE + res._length % BASE + carryOver;
 
-			if (res._length)
-			{
-				res._values[i] += res._length % BASE;
-				res._length /= BASE;
-			}
+			res._length /= BASE;
+			MAX /= BASE;
 
-			tmp /= BASE;
-			carryOver = (res._values[i] >= BASE) ? 1u : 0u;
-			res._values[i] = res._values[i] % BASE;
+			carryOver = nRes >= BASE ? 1 : 0;
+			res._values[i] = carryOver ? nRes - BASE : nRes;
+			++i;
+		}
+
+		while (MAX)
+		{
+			nRes = MAX % BASE + carryOver;
+			MAX /= BASE;
+
+			carryOver = nRes >= BASE ? 1 : 0;
+			res._values[i] = carryOver ? nRes - BASE : nRes;
 			++i;
 		}
 
@@ -2007,37 +2018,44 @@ void longNum::add2positive_2(const longNum& n1, const longNum& n2, longNum& res)
 
 // -----------------------------------------------------------------------------------------------
 
-// Add 2 positive numbers: The first one is an array, the second one is a size_t
-// TODO: replace tmp with const_cast ptr
+// Add 2 positive numbers: [] + size_t
+// optimized
 void longNum::add2positive_3(const longNum& n1, const size_t n2, longNum& res) const
 {
+	size_t* ptr = const_cast<size_t*>(&n2);
+
 #if defined _TRACE_
 	std::cout << " ---> Alloc (add2positive_3)" << std::endl;
 #endif
 
-	size_t tmp(n2);
-	digitType carryOver(0);
+	size_t i(0u);
+	digitType nRes(0), carryOver(0);
 
 	res._length = n1._length;
 	res._values = new digitType[n1._length + 1u];
 
-	for (size_t i = 0; i < res._length; ++i)
+	while (n2)
 	{
-		res._values[i] = n1._values[i] + carryOver;
+		nRes = n1._values[i] + n2 % BASE + carryOver;
 
-		if (tmp)
-		{
-			res._values[i] += tmp % BASE;
-			tmp /= BASE;
-		}
+		*ptr /= BASE;
 
-		carryOver = (res._values[i] >= BASE) ? 1u : 0u;
-		res._values[i] = res._values[i] % BASE;
+		carryOver = nRes >= BASE ? 1 : 0;
+		res._values[i] = carryOver ? nRes - BASE : nRes;
+		++i;
+	}
+
+	for (; i < n1._length; ++i)
+	{
+		nRes = n1._values[i] + carryOver;
+
+		carryOver = nRes >= BASE ? 1 : 0;
+		res._values[i] = carryOver ? nRes - BASE : nRes;
 	}
 
 	if (carryOver)
 	{
-		res._values[res._length++] = 1u;
+		res._values[res._length++] = carryOver;
 	}
 
 	return;
@@ -2046,56 +2064,63 @@ void longNum::add2positive_3(const longNum& n1, const size_t n2, longNum& res) c
 // -----------------------------------------------------------------------------------------------
 
 // Pre-requirement: res._values is not allocated yet
-// TODO: remove pragma when it's not needed
+// optimized
 template <class Type>
 void longNum::add2positive(const longNum& n1, const Type n2, longNum& res) const
 {
-	Type* tmp = const_cast<Type*>(&n2);
+	size_t i(0u);
+	digitType nRes(0);
+	Type* ptr = const_cast<Type*>(&n2);
 
 	// #pragma warning (disable:4146)
 	// This piece of code won't affect any unsigned types.
 	// But when we pass unsigned type as template Type, the compiler ignores the fact that the value is compared with zero,
 	// but still says we can't assign *tmp to -*tmp
 	// So we disable this warning for good
-	if (*tmp < 0)
-		*tmp = -*tmp;
+	if (n2 < 0)
+		*ptr = -*ptr;
 
-	// Add 2 positive numbers: The first one is an array, the second one is a Type
+	// Add 2 positive numbers: [] + Type
 	if (n1._values)
 	{
-		digitType carryOver(0);
-
 #if defined _TRACE_
-		std::cout << " ---> Alloc (add2positive<Type>) - 1" << std::endl;
+		std::cout << " ---> Alloc (add2positive<Type>)" << std::endl;
 #endif
+
+		digitType carryOver(0);
 
 		res._length = n1._length;
 		res._values = new digitType[n1._length + 1u];
 
-		for (size_t i = 0; i < res._length; ++i)
+		while (n2)
 		{
-			res._values[i] = n1._values[i] + carryOver;
+			nRes = n1._values[i] + n2 % BASE + carryOver;
 
-			if (n2)
-			{
-				res._values[i] += n2 % BASE;
-				*tmp /= BASE;
-			}
+			*ptr /= BASE;
 
-			carryOver = (res._values[i] >= BASE) ? 1u : 0u;
-			res._values[i] = res._values[i] % BASE;
+			carryOver = nRes >= BASE ? 1 : 0;
+			res._values[i] = carryOver ? nRes - BASE : nRes;
+			++i;
+		}
+
+		for (; i < n1._length; ++i)
+		{
+			nRes = n1._values[i] + carryOver;
+
+			carryOver = nRes >= BASE ? 1 : 0;
+			res._values[i] = carryOver ? nRes - BASE : nRes;
 		}
 
 		if (carryOver)
 		{
-			res._values[res._length++] = 1u;
+			res._values[res._length++] = carryOver;
 		}
 
 		return;
 	}
 
 
-	// Add 2 positive numbers: The first one holds its value as a size_t, the second one is a Type
+	// Add 2 positive numbers: size_t + Type
 	res._length = n1._length + n2;
 
 #if defined _IS_LESSER_
@@ -2104,10 +2129,10 @@ void longNum::add2positive(const longNum& n1, const Type n2, longNum& res) const
 	if (res._length > longNum_MAX_VALUE)
 	{
 #if defined _TRACE_
-		std::cout << " ---> Alloc (add2positive_2)" << std::endl;
+		std::cout << " ---> Alloc (add2positive<Type>)" << std::endl;
 #endif
 
-		size_t tmp(longNum_MAX_VALUE), i(0);
+		size_t MAX(longNum_MAX_VALUE);
 		digitType carryOver(0);
 
 		res._values = new digitType[longNum_MAX_SIZE_T_LENGTH];
@@ -2115,19 +2140,25 @@ void longNum::add2positive(const longNum& n1, const Type n2, longNum& res) const
 		// Imitate size_t overflow
 		res._length -= longNum_MAX_VALUE;
 
-		while (tmp)
+		while (res._length)
 		{
-			res._values[i] = tmp % BASE + carryOver;
+			nRes = MAX % BASE + res._length % BASE + carryOver;
 
-			if (res._length)
-			{
-				res._values[i] += res._length % BASE;
-				res._length /= BASE;
-			}
+			res._length /= BASE;
+			MAX /= BASE;
 
-			tmp /= BASE;
-			carryOver = (res._values[i] >= BASE) ? 1u : 0u;
-			res._values[i] = res._values[i] % BASE;
+			carryOver = nRes >= BASE ? 1 : 0;
+			res._values[i] = carryOver ? nRes - BASE : nRes;
+			++i;
+		}
+
+		while (MAX)
+		{
+			nRes = MAX % BASE + carryOver;
+			MAX /= BASE;
+
+			carryOver = nRes >= BASE ? 1 : 0;
+			res._values[i] = carryOver ? nRes - BASE : nRes;
 			++i;
 		}
 
@@ -2140,32 +2171,39 @@ void longNum::add2positive(const longNum& n1, const Type n2, longNum& res) const
 	if (res._length < n1._length || res._length < n2)
 	{
 #if defined _TRACE_
-		std::cout << " ---> Alloc (add2positive<Type>) - 2" << std::endl;
+		std::cout << " ---> Alloc (add2positive<Type>)" << std::endl;
 #endif
 
-		size_t MAX(longNum_MAX_VALUE), i(0);
+		size_t MAX(longNum_MAX_VALUE);
 		digitType carryOver(1);
 
 		res._values = new digitType[longNum_MAX_SIZE_T_LENGTH];
 
+		while (res._length)
+		{
+			nRes = MAX % BASE + res._length % BASE + carryOver;
+
+			res._length /= BASE;
+			MAX /= BASE;
+
+			carryOver = nRes >= BASE ? 1 : 0;
+			res._values[i] = carryOver ? nRes - BASE : nRes;
+			++i;
+		}
+
 		while (MAX)
 		{
-			res._values[i] = MAX % BASE + carryOver;
-
-			if (res._length)
-			{
-				res._values[i] += res._length % BASE;
-				res._length /= BASE;
-			}
-
+			nRes = MAX % BASE + carryOver;
 			MAX /= BASE;
-			carryOver = (res._values[i] >= BASE) ? 1u : 0u;
-			res._values[i] = res._values[i] % BASE;
+
+			carryOver = nRes >= BASE ? 1 : 0;
+			res._values[i] = carryOver ? nRes - BASE : nRes;
 			++i;
 		}
 
 		res._length = i;
 	}
+
 #endif
 
 	return;
@@ -2173,7 +2211,7 @@ void longNum::add2positive(const longNum& n1, const Type n2, longNum& res) const
 
 // -----------------------------------------------------------------------------------------------
 
-// Subtracts 2 positive numbers
+// operator +/- helper: Subtracts 2 positive longNums
 // Returns:
 //	false : n1 >= n2
 //	true  : n1 <  n2
@@ -2183,12 +2221,12 @@ bool longNum::subtr2positive(const longNum& n1, const longNum& n2, longNum& res)
 	{
 		if (n2._values)
 		{
-			// Subtract 2 positive numbers: each one is a long version
+			// Subtract 2 positive numbers: [] - []
 			return subtr2positive_1(n1, n2, res);
 		}
 		else
 		{
-			// Subtract 2 positive numbers: The first one is an array, the second one is a size_t
+			// Subtract 2 positive numbers: [] - size_t
 			return subtr2positive_3(n1, n2._length, res);
 		}
 	}
@@ -2196,12 +2234,12 @@ bool longNum::subtr2positive(const longNum& n1, const longNum& n2, longNum& res)
 	{
 		if (n2._values)
 		{
-			// Subtract 2 positive numbers: The first one is an array, the second one is a size_t
+			// Subtract 2 positive numbers: [] - size_t
 			return !subtr2positive_3(n2, n1._length, res);
 		}
 		else
 		{
-			// Subtract 2 positive numbers: Each of the two holds its number as a size_t
+			// Subtract 2 positive numbers: size_t - size_t
 			return subtr2positive_2(n1, n2, res);
 		}
 	}
@@ -2211,7 +2249,8 @@ bool longNum::subtr2positive(const longNum& n1, const longNum& n2, longNum& res)
 
 // -----------------------------------------------------------------------------------------------
 
-// [] - []
+// Subtract 2 positive numbers: [] - []
+// optimized
 bool longNum::subtr2positive_1(const longNum& n1, const longNum& n2, longNum& res) const
 {
 	bool bRes = true;
@@ -2225,12 +2264,12 @@ bool longNum::subtr2positive_1(const longNum& n1, const longNum& n2, longNum& re
 	// The numbers are equal: just return 0
 	if (!isGreater)
 	{
-		if (res._values)
-			delete[] res._values;
-
 #if defined _TRACE_
 		std::cout << " ---> longNum converted to size_t : 0" << std::endl;
 #endif
+
+		if (res._values)
+			delete[] res._values;
 
 		res._values = nullptr;
 		res._length = 0;
@@ -2253,41 +2292,28 @@ bool longNum::subtr2positive_1(const longNum& n1, const longNum& n2, longNum& re
 	res._length = pn1->_length;
 	res._values = new digitType[pn1->_length];
 
-	size_t i = 0, cnt = 0, len_minus_one = pn1->_length - 1;
+	digitType nRes(0), carryOver(0);
+	size_t i(0u), cnt(0u);
 
-	// One digit is guaranteed to be there
-	res._values[0] = pn1->_values[0];
-
-
-	// TODO: see if a single loop is faster than this approach
+	// 2 for-loops work faster than a single one
+	// There's no difference if the numbers are of the same length
+	// But there IS a difference when the number's length is different
 	for (; i < pn2->_length; ++i)
 	{
-		if (i < len_minus_one)
-			res._values[i + 1] = pn1->_values[i + 1];
+		nRes = pn1->_values[i] - (pn2->_values[i] + carryOver);
 
-		while (res._values[i] < pn2->_values[i])
-		{
-			res._values[i + 1]--;
-			res._values[i] += BASE;
-		}
-
-		res._values[i] = res._values[i] - pn2->_values[i];
-
-		cnt = res._values[i] ? 0 : cnt + 1;
+		carryOver = nRes >= 0 ? 0 : 1;
+		res._values[i] = carryOver ? nRes + BASE : nRes;
+		cnt = res._values[i] ? 0 : cnt + 1u;
 	}
 
 	for (; i < pn1->_length; ++i)
 	{
-		if (i < len_minus_one)
-			res._values[i + 1] = pn1->_values[i + 1];
+		nRes = pn1->_values[i] - carryOver;
 
-		while (res._values[i] < 0)
-		{
-			res._values[i + 1]--;
-			res._values[i] += BASE;
-		}
-
-		cnt = res._values[i] ? 0 : cnt + 1;
+		carryOver = nRes >= 0 ? 0 : 1;
+		res._values[i] = carryOver ? nRes + BASE : nRes;
+		cnt = res._values[i] ? 0 : cnt + 1u;
 	}
 
 	res._sign = pn1->_sign;						// Sign is determined by the greater number
@@ -2300,7 +2326,8 @@ bool longNum::subtr2positive_1(const longNum& n1, const longNum& n2, longNum& re
 
 // -----------------------------------------------------------------------------------------------
 
-// Subtract 2 positive numbers: each one is a size_t
+// Subtract 2 positive numbers: size_t - size_t
+// optimized
 bool longNum::subtr2positive_2(const longNum& n1, const longNum& n2, longNum& res) const
 {
 	if (n1._length < n2._length)
@@ -2318,37 +2345,40 @@ bool longNum::subtr2positive_2(const longNum& n1, const longNum& n2, longNum& re
 
 // -----------------------------------------------------------------------------------------------
 
-// Subtract 2 positive numbers: the first one is an array, the second one is a size_t
+// Subtract 2 positive numbers: [] - size_t
 // If the resulting number can be stored as a size_t, we'll have to store it like that
+// optimized
 bool longNum::subtr2positive_3(const longNum& n1, const size_t n2, longNum& res) const
 {
+	size_t *ptr = const_cast<size_t*>(&n2);
+
 #if defined _TRACE_
 	std::cout << " ---> Alloc (subtr2positive_3)" << std::endl;
 #endif
-
 	res._length = n1._length;
 	res._values = new digitType[n1._length];
 
-	size_t *tmp = const_cast<size_t*>(&n2);
+	size_t cnt(0u), i(0u);
+	digitType nRes(0), carryOver(0);
 
-	size_t cnt(0);
-	digitType carryOver(0);
-
-	for (size_t i = 0; i < res._length; ++i)
+	while (n2)
 	{
-		res._values[i] = n1._values[i] - carryOver;
+		nRes = n1._values[i] - (n2 % BASE + carryOver);
 
-		if (n2)
-		{
-			res._values[i] -= n2 % BASE;
-			*tmp /= BASE;
-		}
+		*ptr /= BASE;
 
-		carryOver = (res._values[i] >= 0) ? 0u : 1u;
+		carryOver = nRes >= 0 ? 0 : 1;
+		res._values[i] = carryOver ? nRes + BASE : nRes;
+		cnt = res._values[i] ? 0 : cnt + 1u;
+		++i;
+	}
 
-		if (carryOver)
-			res._values[i] += BASE;
+	for (; i < n1._length; ++i)
+	{
+		nRes = n1._values[i] - carryOver;
 
+		carryOver = nRes >= 0 ? 0 : 1;
+		res._values[i] = carryOver ? nRes + BASE : nRes;
 		cnt = res._values[i] ? 0 : cnt + 1u;
 	}
 
@@ -2369,19 +2399,19 @@ bool longNum::subtr2positive_3(const longNum& n1, const size_t n2, longNum& res)
 //	true  : n1 <  n2
 // Knowin issues:
 //  1. If n1 is an array, n2 must not be greater than n1. In this case the result will be wrong. This is possible when _IS_LESSER_ is defined
+// optimized
 template <class Type>
 bool longNum::subtr2positive(const longNum& n1, const Type n2, longNum& res) const
 {
-	Type* tmp = const_cast<Type*>(&n2);
+	Type* ptr = const_cast<Type*>(&n2);
+
+	// #pragma warning (disable:4146)
+	if (n2 < 0)
+		*ptr = -*ptr;
 
 	if (n1._values)
 	{
-		// #pragma warning (disable:4146)
-		if (*tmp < 0)
-			*tmp = -*tmp;
-
-		// Subtract 2 positive numbers: The first one is an array, the second one is a Type
-
+		// Subtract 2 positive numbers: [] - Type
 #if defined _TRACE_
 		std::cout << " ---> Alloc (subtr2positive<Type>)" << std::endl;
 #endif
@@ -2389,24 +2419,27 @@ bool longNum::subtr2positive(const longNum& n1, const Type n2, longNum& res) con
 		res._length = n1._length;
 		res._values = new digitType[n1._length];
 
-		size_t cnt(0);
-		digitType carryOver(0);
+		size_t cnt(0u), i(0u);
+		digitType nRes(0), carryOver(0);
 
-		for (size_t i = 0; i < res._length; ++i)
+		while (n2)
 		{
-			res._values[i] = n1._values[i] - carryOver;
+			nRes = n1._values[i] - (n2 % BASE + carryOver);
 
-			if (n2)
-			{
-				res._values[i] -= n2 % BASE;
-				*tmp /= BASE;
-			}
+			*ptr /= BASE;
 
-			carryOver = (res._values[i] >= 0) ? 0u : 1u;
+			carryOver = nRes >= 0 ? 0 : 1;
+			res._values[i] = carryOver ? nRes + BASE : nRes;
+			cnt = res._values[i] ? 0 : cnt + 1u;
+			++i;
+		}
 
-			if (carryOver)
-				res._values[i] += BASE;
+		for (; i < n1._length; ++i)
+		{
+			nRes = n1._values[i] - carryOver;
 
+			carryOver = nRes >= 0 ? 0 : 1;
+			res._values[i] = carryOver ? nRes + BASE : nRes;
 			cnt = res._values[i] ? 0 : cnt + 1u;
 		}
 
@@ -2419,17 +2452,11 @@ bool longNum::subtr2positive(const longNum& n1, const Type n2, longNum& res) con
 		return false;
 	}
 
-	bool n2_sign(*tmp >= 0);
 
-	if (!n2_sign)
-		*tmp = -*tmp;
-
-	// Subtract 2 positive numbers: The first one holds its value as a size_t, the second one is a Type
-
+	// Subtract 2 positive numbers: size_t - Type
 	if (n1._length < n2)
 	{
 		res._length = n2 - n1._length;
-		res._sign = n2_sign;
 		return true;
 	}
 
@@ -2458,6 +2485,8 @@ int longNum::absValueIsLarger(const longNum& n1, const longNum& n2) const
 	{
 		for (size_t i = n1._length - 1; i != size_t(-1); --i)
 		{
+			// TODO: test if difittype asd = n1._values[i] - n2._values[i]
+			// and then checking its sign and value is faster
 			if (n1._values[i] > n2._values[i])
 				return 1;
 
@@ -2588,15 +2617,36 @@ bool longNum::isMalformed() const
 
 int testLesser(const long N)
 {
+	aaa();
+	return;
+
 	if (0)
 	{
-		testOperatorPlus();
+		testOperatorPlusEqualsTemplated();
 		return 0;
 	}
 
-	if (1)
+	if (0)
+	{
+		testOperatorPlusEquals();
+		return 0;
+	}
+
+	if (0)
 	{
 		testOperatorMinus();
+		return 0;
+	}
+
+	if (0)
+	{
+		testOperatorMinusTemplated();
+		return 0;
+	}
+
+	if (0)
+	{
+		testOperatorPlusTemplated();
 		return 0;
 	}
 
@@ -2617,7 +2667,6 @@ int testLesser(const long N)
 
 	for (long i = -N; i <= N; i++)
 	{
-#if 0
 		longNum n0_i(i);
 
 		// Allocation Check
@@ -2733,12 +2782,11 @@ int testLesser(const long N)
 				return 1;
 			}
 		}
-#endif
+
 		// --------------------------------------------------------------------------
 
 		for (long j = -N; j <= N; j++)
 		{
-#if 0
 			// operator ==
 			{
 				longNum n1(i), n2(j);
@@ -2982,7 +3030,7 @@ int testLesser(const long N)
 					return 1;
 				}
 			}
-#endif
+
 			// --------------------------------------------------------------------------
 
 			// operator -
@@ -3023,6 +3071,48 @@ int testLesser(const long N)
 
 			// --------------------------------------------------------------------------
 
+			// operator -=
+			{
+				longNum n1(i), n2(j);
+
+				// operator -=
+				n1 -= n2;
+
+				if (n1 != i - j)
+				{
+					std::cout << " -- ERROR 1 in operator -= : " << i << " -= " << j << " ::: Expected " << (i - j) << ", got " << n1.get() << std::endl;
+					return 1;
+				}
+/*
+				if (n2 != j)
+				{
+					std::cout << " -- ERROR 2 in operator -= : const values changed" << std::endl;
+					return 1;
+				}
+
+				// operator -= -- move semantics
+				n2 -= longNum(i);
+
+				if (n2 != j - i)
+				{
+					std::cout << " -- ERROR 3 in operator -= " << std::endl;
+					return 1;
+				}
+
+				// operator -= -- templated
+				n1 -= i;
+				n1 -= j;
+
+				if (n1 != i - i - j - j)
+				{
+					std::cout << " -- ERROR 4 in operator += " << std::endl;
+					return 1;
+				}
+*/
+			}
+
+			// --------------------------------------------------------------------------
+
 		}
 
 		int prct = getPercentage(N, i);
@@ -3055,50 +3145,6 @@ int testLarger()
 
 			// --------------------------------------------------------------------------
 #if 0
-			// operator -=
-			{
-				longNum n1(i), n2(j);
-
-				// operator -=
-				n1 -= n2;
-
-				if (n1 != i - j)
-				{
-					doStop = 1;
-					std::cout << " -- ERROR 1 in operator -= : " << i << " -= " << j << " ::: Expected " << (i - j) << ", got " << n1.get() << std::endl;
-					break;
-				}
-
-				if (n2 != j)
-				{
-					doStop = 1;
-					std::cout << " -- ERROR 2 in operator -= : const values changed" << std::endl;
-					break;
-				}
-
-				// operator -= -- move semantics
-				n2 -= longNum(i);
-
-				if (n2 != j - i)
-				{
-					doStop = 1;
-					std::cout << " -- ERROR 3 in operator -= " << std::endl;
-					break;
-				}
-
-				// operator -= -- templated
-				n1 -= i;
-				n1 -= j;
-
-				if (n1 != i - i - j - j)
-				{
-					doStop = 1;
-					std::cout << " -- ERROR 4 in operator += " << std::endl;
-					break;
-				}
-			}
-
-			// --------------------------------------------------------------------------
 
 			// operator bool()
 			{
@@ -3151,7 +3197,92 @@ int testLarger()
 
 #endif
 
-void testOperatorPlus()
+void testOperatorMinus()
+{
+	longNum res,
+		n0("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502"),
+		n1("53285760128475643665508346502"),
+		n2("18446744083709551615"),
+		n3(123456789);
+
+	long long minval = -(size_t(-1) / 2);
+	long long maxval = +(size_t(-1) / 2) - 293456789813;
+
+	//for (long long i = minval; i < maxval; i += 293456789813)
+
+	// 20.418
+	// 
+
+	for (long long i = 0; i < maxval; i += 293456789813)
+	{
+		res = (n0 - i);
+		res = (n1 - i);
+		res = (n2 - i);
+	}
+
+/*
+	size_t num1 = 293456789813;
+	size_t num2 = 293456789813;
+
+	for (size_t i = 0; i < 9999999; ++i)
+	{
+		std::string str1 = std::to_string(num1);
+		std::string str2 = std::to_string(num2);
+
+		str1 = str1 + str1 + str1 + str1 + str1;
+		str2 = str2 + str2 + str2 + str2 + str2;
+
+		longNum ln1(str1);
+		longNum ln2(str2);
+
+		//res = ln1 - ln2;
+		//res = ln2 - ln1;
+
+		str2 = str2 + str2 + str2;
+
+		longNum ln3(str2);
+
+		res = ln3 - ln2;
+		res = ln3 - ln1;
+
+		res = ln2 - ln3;
+		res = ln1 - ln3;
+
+		num1 *= 17;
+		num2 *= 27;
+	}
+*/
+
+/*
+	{
+		size_t num1 = 293456789813;
+		size_t num2 = 293456789813;
+
+		// 34.279 -- originally
+
+		// 17.534
+
+		res = n0;
+
+		for (size_t i = 0; i < 49999999; ++i)
+		{
+			longNum ln1(num1);
+			longNum ln2(num1);
+
+			res = res + ln1;
+			res = res + ln2;
+
+			num1 *= 17;
+			num1 *= 27;
+		}
+
+		std::cout << res.get() << std::endl;
+	}
+*/
+	return;
+}
+
+void testOperatorPlusTemplated()
 {
 	longNum res,
 		n0("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502"),
@@ -3183,7 +3314,7 @@ void testOperatorPlus()
 	return;
 }
 
-void testOperatorMinus()
+void testOperatorMinusTemplated()
 {
 	longNum res,
 		n0("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502"),
@@ -3213,4 +3344,246 @@ void testOperatorMinus()
 	}
 
 	return;
+}
+
+void testOperatorPlusEquals()
+{
+	int mode = 5;
+
+	longNum res, n2("18446744083709551615");
+
+	// [] += [] -- same sign
+	if (mode == 1)
+	{
+		size_t num1 = 293456789813;
+		size_t num2 = 293456789813;
+
+		res = n2;
+
+		// 47.846 -- 27.614
+		for (size_t i = 0; i < 19999999; ++i)
+		{
+			std::string str1 = std::to_string(num1);
+			std::string str2 = std::to_string(num2);
+
+			str1 = str1 + str1 + str1 + str1 + str1;
+			str2 = str2 + str2 + str2 + str2 + str2;
+
+			longNum ln1(str1);
+			longNum ln2(str2);
+
+			str2 = str2 + str2 + str2;
+			longNum ln3(str2);
+
+			res += ln1;
+			res += ln2;
+			res += ln3;
+
+			num1 *= 17;
+			num2 *= 27;
+		}
+
+		return;
+	}
+
+	// [] += [] -- diff sign
+	if (mode == 2)
+	{
+		longNum n0("-511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502"),
+				n1("-511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+
+		size_t num1 = 293456789813;
+		size_t num2 = 293456789813;
+
+		// 31.833 -- 22.046 -- 20.794
+
+		for (size_t i = 0; i < 19999999; ++i)
+		{
+			std::string str1 = std::to_string(num1);
+			std::string str2 = std::to_string(num2);
+
+			str1 = str1 + str1 + str1 + str1 + str1;
+			str2 = str2 + str2 + str2 + str2 + str2;
+
+			longNum ln1(str1);
+			longNum ln2(str2);
+
+			n0 += ln1;
+			ln2 += n1;
+
+			num1 *= 17;
+			num2 *= 27;
+		}
+
+		return;
+	}
+
+	// [] += size_t -- both signs
+	if (mode == 3)
+	{
+		longNum n0("-511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502"),
+				n1("+511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+
+		size_t num1 = 293456789813;
+		size_t num2 = 293456789813;
+
+		// 34.123 -- 21.922 -- 17.89 -- 13.625 -- 5.354
+
+		for (size_t i = 0; i < 59999999; ++i)
+		{
+			longNum ln1(num1);
+			longNum ln2(num2);
+
+			n0 += ln1;
+			n1 += ln2;
+
+			num1 *= 17;
+			num2 *= 27;
+		}
+
+		return;
+	}
+
+	// size_t += [] -- both signs
+	if (mode == 4)
+	{
+		longNum n0("-511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502"),
+				n1("+511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+
+		size_t num1 = 293456789813;
+		size_t num2 = 293456789813;
+
+		// 48.47 -- 25.519 -- 23.994 -- 23.64
+
+		for (size_t i = 0; i < 59999999; ++i)
+		{
+			longNum ln1(num1);
+			longNum ln2(num2);
+
+			ln1 += n0;
+			ln2 += n1;
+
+			num1 *= 17;
+			num2 *= 27;
+		}
+
+		return;
+	}
+
+	// size_t += size_t -- both signs
+	if (mode == 5)
+	{
+		size_t num1 = 293456789813;
+		size_t num2 = 293456789813;
+
+		// 45.051 -- 39.291
+
+		for (size_t i = 0; i < 999999999; ++i)
+		{
+			longNum ln1(num1);
+			longNum ln2(num2);
+			longNum ln3(num1);
+			longNum ln4(num2); ln4.flipSign();
+
+			ln1 += ln2;
+			ln3 += ln4;
+
+			num1 *= 17;
+			num2 *= 27;
+		}
+
+		return;
+	}
+}
+
+void testOperatorPlusEqualsTemplated()
+{
+	longNum n0("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502"),
+			n1("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+
+	long long incr = 193456789813;
+	long long minval = -(size_t(-1) / 2);
+	long long maxval = +(size_t(-1) / 2) - incr;
+
+	size_t num1 = 293456789813;
+	size_t num2 = 293456789813;
+
+	// 30.774 -- 5.832
+
+	for (long long i = 0; i < maxval; i += incr)
+	{
+		n0 += +i;
+		n1 += -i;
+
+		longNum ln1(num1);
+		longNum ln2(num2);
+
+		ln1 += +i;
+		ln2 += -i;
+
+		num1 *= 17;
+		num2 *= 27;
+	}
+
+	return;
+}
+
+void aaa()
+{
+	longNum res("18446744083709551615");
+
+	// [] += [] -- same sign
+	{
+		size_t num1 = 293456789813;
+		size_t num2 = 293456789813;
+
+		for (size_t i = 0; i < 19999999; ++i)
+		{
+			std::string str1 = std::to_string(num1);
+			std::string str2 = std::to_string(num2);
+
+			str1 = str1 + str1 + str1 + str1 + str1;
+			str2 = str2 + str2 + str2 + str2 + str2;
+
+			longNum ln1(str1);
+			longNum ln2(str2);
+
+			str2 = str2 + str2 + str2;
+			longNum ln3(str2);
+
+			res += ln1;
+			res += ln2;
+			res += ln3;
+
+			num1 *= 17;
+			num2 *= 27;
+		}
+	}
+
+	// [] += [] -- diff sign
+	{
+		longNum n0("-511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502"),
+				n1("-511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+
+		size_t num1 = 293456789813;
+		size_t num2 = 293456789813;
+
+		for (size_t i = 0; i < 19999999; ++i)
+		{
+			std::string str1 = std::to_string(num1);
+			std::string str2 = std::to_string(num2);
+
+			str1 = str1 + str1 + str1 + str1 + str1;
+			str2 = str2 + str2 + str2 + str2 + str2;
+
+			longNum ln1(str1);
+			longNum ln2(str2);
+
+			n0 += ln1;
+			ln2 += n1;
+
+			num1 *= 17;
+			num2 *= 27;
+		}
+	}
 }
