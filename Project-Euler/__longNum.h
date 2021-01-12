@@ -162,9 +162,14 @@ class longNum {
 		bool subtr2positive_3(const longNum&, const size_t,   longNum&) const;						//
 
 		void opPlusEqual_1(longNum&, const longNum&) const;											// operator += helper 1
-		void opPlusEqual_2(longNum&, const longNum&);												// operator += helper 2
-		void opPlusEqual_3(longNum&, const longNum&);												// operator += helper 3
-		void opPlusEqual_4(longNum&, const longNum&);												// operator += helper 4
+		void opPlusEqual_2(longNum&, const longNum&, const size_t) const;							// operator += helper 2
+		void opPlusEqual_3(longNum&, const longNum&, const size_t) const;							// operator += helper 3
+		void opPlusEqual_4(longNum&, const longNum&) const;											// operator += helper 4
+
+		void opMinusEqual_1(longNum&, const longNum&) const;										// operator -= helper 1
+		void opMinusEqual_2(longNum&, const longNum&) const;										// operator -= helper 2
+		void opMinusEqual_3(longNum&, const longNum&) const;										// operator -= helper 3
+		void opMinusEqual_4(longNum&, const longNum&) const;										// operator -= helper 4
 
 	private:
 		// Do NOT change order! All the constructors rely on the definition order
