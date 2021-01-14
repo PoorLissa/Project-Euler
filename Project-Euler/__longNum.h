@@ -58,6 +58,7 @@ void	testOperatorMinusTemplated();
 void	testOperatorPlusTemplated();
 void	testOperatorPlusEquals();
 void	testOperatorPlusEqualsTemplated();
+void	testOperatorMinusEquals();
 
 // -----------------------------------------------------------------------------------------------
 
@@ -167,8 +168,8 @@ class longNum {
 		void opPlusEqual_4(longNum&, const longNum&) const;											// operator += helper 4
 
 		void opMinusEqual_1(longNum&, const longNum&) const;										// operator -= helper 1
-		void opMinusEqual_2(longNum&, const longNum&) const;										// operator -= helper 2
-		void opMinusEqual_3(longNum&, const longNum&) const;										// operator -= helper 3
+		void opMinusEqual_2(longNum&, const longNum&, const size_t) const;							// operator -= helper 2
+		void opMinusEqual_3(longNum&, const longNum&, const size_t) const;							// operator -= helper 3
 		void opMinusEqual_4(longNum&, const longNum&) const;										// operator -= helper 4
 
 	private:
