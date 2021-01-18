@@ -4,7 +4,16 @@
 #include <map>
 #include <iostream>
 
+// -----------------------------------------------------------------------------------------------
+
+longNum::digitType longNum::maxSizeT[] = { 5, 1, 6, 1, 5, 5, 9, 0, 7, 3, 7, 0, 4, 4, 7, 6, 4, 4, 8, 1 };
+
+// -----------------------------------------------------------------------------------------------
+
 // TODO: check all cases of using values[i] and replace with *digit
+
+// TODO: 		if (n1._length <= longNum_MAX_SIZE_T_LENGTH)
+//					n1.convertToSizeT_ifPossible();
 
 // Main Class Contents
 #if 1
@@ -12,6 +21,8 @@
 // TODO: try to make it a bit faster
 longNum::longNum(const char* str) : _values(nullptr), _length(strlen(str)), _sign(POS)
 {
+	TRACE_CODE_FLOW("longNum::longNum(const char *)");
+
 	// Get sign and skip first symbol
 	if (_length)
 	{
@@ -60,9 +71,7 @@ longNum::longNum(const char* str) : _values(nullptr), _length(strlen(str)), _sig
 		// More than size_t(-1), store the number as array
 		if (_values)
 		{
-#if defined _TRACE_
-			std::cout << " ---> Alloc (Constructor(const char*)) : " << str << std::endl;
-#endif
+			TRACE_MSG_IF2("Alloc Constructor(const char*) : ", str);
 
 			for (size_t i = 0; i < _length; i++)
 				_values[_length - i - 1] = str[i] - 48;
@@ -72,9 +81,7 @@ longNum::longNum(const char* str) : _values(nullptr), _length(strlen(str)), _sig
 	// Less than size_t(-1), store the number as size_t
 	if (!_values)
 	{
-#if defined _TRACE_
-		std::cout << " ---> Constructor(const char*) : store as size_t : " << str << std::endl;
-#endif
+		TRACE_MSG_IF2("Constructor(const char*) -- store as size_t: ", str);
 
 		size_t tmp(0u);
 
@@ -89,11 +96,12 @@ longNum::longNum(const char* str) : _values(nullptr), _length(strlen(str)), _sig
 
 longNum::longNum(const longNum& other) : _length(other._length), _sign(other._sign), _values(nullptr)
 {
+	TRACE_CODE_FLOW("longNum::longNum(const longNum &)");
+
 	if (other._values)
 	{
-#if defined _TRACE_
-		std::cout << " ---> Alloc (Copy Constructor)" << std::endl;
-#endif
+		TRACE_MSG_IF1("Alloc (Copy Constructor)");
+
 		_values = new digitType[_length];
 		memcpy(_values, other._values, sizeof(digitType) * _length);
 	}
@@ -103,6 +111,8 @@ longNum::longNum(const longNum& other) : _length(other._length), _sign(other._si
 
 longNum::longNum(longNum&& other) noexcept
 {
+	TRACE_CODE_FLOW("longNum::longNum(longNum &&)");
+
 	_length = std::move(other._length);
 	_values = std::move(other._values);
 	_sign = other._sign;
@@ -116,12 +126,15 @@ longNum::longNum(longNum&& other) noexcept
 longNum::longNum(const size_t num) : _length(num), _sign(POS), _values(nullptr)
 {
 	// When constructing longNum from size_t, the new value will always be stored as size_t
+	TRACE_CODE_FLOW("longNum::longNum(const size_t)");
 }
 
 // -----------------------------------------------------------------------------------------------
 
 longNum::longNum(const long num) : _sign(num >= 0), _length(_sign ? num : -num), _values(nullptr)
 {
+	TRACE_CODE_FLOW("longNum::longNum(const long)");
+
 #if defined _IS_LESSER_
 
 	// When _IS_LESSER_ is defined, all the numbers > longNum_MAX_VALUE will be created as array-based
@@ -133,9 +146,7 @@ longNum::longNum(const long num) : _sign(num >= 0), _length(_sign ? num : -num),
 	}
 	else
 	{
-#if defined _TRACE_
-		std::cout << " ---> Alloc (Constructor(const long)) : " << num << std::endl;
-#endif
+		TRACE_MSG_IF2("Alloc (Constructor(const long)): ", num);
 
 		long len = 0, tmp(NUM);
 
@@ -164,27 +175,22 @@ longNum::longNum(const long num) : _sign(num >= 0), _length(_sign ? num : -num),
 longNum::longNum(const long long num) : _sign(num >= 0), _length(_sign ? num : -num), _values(nullptr)
 {
 	// When constructing longNum from int, the new value will always be stored as size_t
+	TRACE_CODE_FLOW("longNum::longNum(const long long)");
 }
 
 // -----------------------------------------------------------------------------------------------
 
-longNum::longNum(const int num) : _length(num), _sign(POS), _values(nullptr)
+longNum::longNum(const int num) : _sign(num >= 0), _length(_sign ? num : -num), _values(nullptr)
 {
 	// When constructing longNum from int, the new value will always be stored as size_t
-	if (num < 0)
-	{
-		_sign = NEG;
-		_length = -num;
-	}
+	TRACE_CODE_FLOW("longNum::longNum(const int)");
 }
 
 // -----------------------------------------------------------------------------------------------
 
 longNum::~longNum()
 {
-#if defined _TRACE_
-	std::cout << " ---> Calling Destructor" << std::endl;
-#endif
+	TRACE_MSG_IF1("Calling Destructor");
 
 	if (_values)
 	{
@@ -198,6 +204,8 @@ longNum::~longNum()
 
 longNum& longNum::operator =(const longNum& other)
 {
+	TRACE_CODE_FLOW("longNum::operator =(const longNum &)");
+
 	if (this != &other)
 	{
 		_length = other._length;
@@ -217,9 +225,8 @@ longNum& longNum::operator =(const longNum& other)
 
 			if (!this->_values)
 			{
-#if defined _TRACE_
-				std::cout << " ---> Alloc (operator =)" << std::endl;
-#endif
+				TRACE_MSG_IF1("Alloc (operator =)");
+
 				_values = new digitType[_length];
 			}
 
@@ -243,6 +250,8 @@ longNum& longNum::operator =(const longNum& other)
 
 longNum& longNum::operator =(longNum&& other) noexcept
 {
+	TRACE_CODE_FLOW("longNum::operator =(longNum &&)");
+
 	if (this != &other)
 	{
 		if (_values)
@@ -268,6 +277,8 @@ longNum& longNum::operator =(longNum&& other) noexcept
 template <class Type>
 longNum& longNum::operator =(const Type other)
 {
+	TRACE_CODE_FLOW("longNum::operator =(const Type)");
+
 	return *this = longNum(other);
 }
 
@@ -275,6 +286,8 @@ longNum& longNum::operator =(const Type other)
 
 bool longNum::operator ==(const longNum& other) const
 {
+	TRACE_CODE_FLOW("longNum::operator ==(const longNum &)");
+
 	if (bool(_values) == bool(other._values))
 	{
 		if (_length == other._length && _sign == other._sign)
@@ -298,6 +311,8 @@ bool longNum::operator ==(const longNum& other) const
 template <class Type>
 bool longNum::operator ==(const Type other) const
 {
+	TRACE_CODE_FLOW("longNum::operator ==(const Type)");
+
 #if defined _IS_LESSER_
 
 	if (_sign != (other >= 0))
@@ -320,6 +335,8 @@ bool longNum::operator ==(const Type other) const
 template <>
 bool longNum::operator ==(const char *str) const
 {
+	TRACE_CODE_FLOW("longNum::operator ==(const char *)");
+
 	return true;
 }
 
@@ -327,6 +344,8 @@ bool longNum::operator ==(const char *str) const
 
 bool longNum::operator !=(const longNum& other) const
 {
+	TRACE_CODE_FLOW("longNum::operator !=(const longNum &)");
+
 	return !(*this == other);
 }
 
@@ -335,6 +354,8 @@ bool longNum::operator !=(const longNum& other) const
 template <class Type>
 bool longNum::operator !=(const Type other) const
 {
+	TRACE_CODE_FLOW("longNum::operator !=(const Type)");
+
 	return !(*this == other);
 }
 
@@ -342,6 +363,8 @@ bool longNum::operator !=(const Type other) const
 
 bool longNum::operator >(const longNum& other) const
 {
+	TRACE_CODE_FLOW("longNum::operator >(const longNum &)");
+
 	if (_sign > other._sign)
 		return true;
 
@@ -379,6 +402,8 @@ bool longNum::operator >(const longNum& other) const
 template <class Type>
 bool longNum::operator >(const Type other) const
 {
+	TRACE_CODE_FLOW("longNum::operator >(const Type)");
+
 #if defined _IS_LESSER_
 
 	if (_sign != (other >= 0))
@@ -406,6 +431,8 @@ bool longNum::operator >(const Type other) const
 template <>
 bool longNum::operator >(const char* str) const
 {
+	TRACE_CODE_FLOW("longNum::operator >(const char *)");
+
 	return true;
 }
 
@@ -413,6 +440,8 @@ bool longNum::operator >(const char* str) const
 
 bool longNum::operator >=(const longNum& other) const
 {
+	TRACE_CODE_FLOW("longNum::operator >=(const longNum &)");
+
 	if (_sign > other._sign)
 		return true;
 
@@ -450,6 +479,8 @@ bool longNum::operator >=(const longNum& other) const
 template <class Type>
 bool longNum::operator >=(const Type other) const
 {
+	TRACE_CODE_FLOW("longNum::operator >=(const Type)");
+
 #if defined _IS_LESSER_
 
 	if (_sign != (other >= 0))
@@ -477,6 +508,8 @@ bool longNum::operator >=(const Type other) const
 template <>
 bool longNum::operator >=(const char* str) const
 {
+	TRACE_CODE_FLOW("longNum::operator >=(const char *)");
+
 	return true;
 }
 
@@ -484,6 +517,8 @@ bool longNum::operator >=(const char* str) const
 
 bool longNum::operator <(const longNum& other) const
 {
+	TRACE_CODE_FLOW("longNum::operator <(const longNum &)");
+
 	if (_sign < other._sign)
 		return true;
 
@@ -521,6 +556,8 @@ bool longNum::operator <(const longNum& other) const
 template <class Type>
 bool longNum::operator <(const Type other) const
 {
+	TRACE_CODE_FLOW("longNum::operator <(const Type)");
+
 #if defined _IS_LESSER_
 
 	if (_sign != (other >= 0))
@@ -548,6 +585,8 @@ bool longNum::operator <(const Type other) const
 template <>
 bool longNum::operator <(const char* str) const
 {
+	TRACE_CODE_FLOW("longNum::operator <(const char *)");
+
 	return true;
 }
 
@@ -555,6 +594,8 @@ bool longNum::operator <(const char* str) const
 
 bool longNum::operator <=(const longNum& other) const
 {
+	TRACE_CODE_FLOW("longNum::operator <=(const longNum &)");
+
 	if (_sign < other._sign)
 		return true;
 
@@ -592,6 +633,8 @@ bool longNum::operator <=(const longNum& other) const
 template <class Type>
 bool longNum::operator <=(const Type other) const
 {
+	TRACE_CODE_FLOW("longNum::operator <=(const Type)");
+
 #if defined _IS_LESSER_
 
 	if (_sign != (other >= 0))
@@ -619,6 +662,8 @@ bool longNum::operator <=(const Type other) const
 template <>
 bool longNum::operator <=(const char* str) const
 {
+	TRACE_CODE_FLOW("longNum::operator <=(const char *)");
+
 	return true;
 }
 
@@ -626,6 +671,8 @@ bool longNum::operator <=(const char* str) const
 
 longNum longNum::operator +(const longNum& other) const
 {
+	TRACE_CODE_FLOW("longNum::operator +(const longNum &)");
+
 	longNum res;
 
 	if (_sign == other._sign)
@@ -646,6 +693,8 @@ longNum longNum::operator +(const longNum& other) const
 template <class Type>
 longNum longNum::operator +(const Type other) const
 {
+	TRACE_CODE_FLOW("longNum::operator +(const Type)");
+
 #if 0
 
 	return std::move(*this + longNum(other));
@@ -679,6 +728,8 @@ longNum longNum::operator +(const Type other) const
 template <>
 longNum longNum::operator +(const char* str) const
 {
+	TRACE_CODE_FLOW("longNum::operator +(const char *)");
+
 	return longNum(0);
 }
 
@@ -686,6 +737,8 @@ longNum longNum::operator +(const char* str) const
 
 longNum& longNum::operator +=(const longNum& other)
 {
+	TRACE_CODE_FLOW("longNum::operator +=(const longNum &)");
+
 	if (_values)
 	{
 		if (other._values)
@@ -716,6 +769,8 @@ longNum& longNum::operator +=(const longNum& other)
 
 longNum& longNum::operator +=(longNum&& other) noexcept
 {
+	TRACE_CODE_FLOW("longNum::operator +=(longNum &&)");
+
 	// We can steal the data from other number, if it is larger than this one
 	// BUT
 	// Moving something out of '&& other' makes sense only in these two cases:
@@ -752,45 +807,46 @@ longNum& longNum::operator +=(longNum&& other) noexcept
 template <class Type>
 longNum& longNum::operator +=(const Type other)
 {
+	TRACE_CODE_FLOW("longNum::operator +=(const Type)");
+
 	Type* ptr = const_cast<Type*>(&other);
 
 	if (_values)
 	{
 		if (_sign == (other >= 0))
 		{
-			if (*ptr < 0)
-				*ptr = -*ptr;
 			// [] += Type
+			MAKE_POSITIVE(*ptr);
 
 			// Perform adding in place
 			size_t i(0u);
-			digitType nRes(0), carryOver(0);
+			digitType carryOver(0);
+			digitType* digit(_values);
 
 			while (other)
 			{
-				nRes = _values[i] + other % BASE + carryOver;
+				*digit += other % BASE + carryOver;
 
 				*ptr /= BASE;
 
-				carryOver = nRes >= BASE ? 1 : 0;
-				_values[i] = carryOver ? nRes - BASE : nRes;
+				carryOver = *digit >= BASE ? 1 : 0;
+				*digit++ = carryOver ? *digit - BASE : *digit;
 				++i;
 			}
 
 			for (; carryOver && i < _length; ++i)
 			{
-				nRes = _values[i] + carryOver;
+				*digit += carryOver;
 
-				carryOver = nRes >= BASE ? 1 : 0;
-				_values[i] = carryOver ? nRes - BASE : nRes;
+				carryOver = *digit >= BASE ? 1 : 0;
+				*digit++ = carryOver ? *digit - BASE : *digit;
 			}
 
 			// If carryOver > 0, we need to reallocate and normalize
 			if (carryOver)
 			{
-#if defined _TRACE_
-				std::cout << " ---> Alloc (operator += <Type>)" << std::endl;
-#endif
+				TRACE_MSG_IF1("Alloc (operator += <Type>)");
+
 				digitType* data = new digitType[_length + 1u];
 
 				memcpy(data, _values, sizeof(digitType) * _length);
@@ -803,32 +859,32 @@ longNum& longNum::operator +=(const Type other)
 		else
 		{
 			// [] -= Type
-			if (*ptr < 0)
-				*ptr = -*ptr;
+			MAKE_POSITIVE(*ptr);
 
 			// Subtract numbers in place
 			size_t cnt(0u), i(0u);
-			digitType nRes(0), carryOver(0);
+			digitType carryOver(0);
+			digitType* digit(_values);
 
 			while (other)
 			{
-				nRes = _values[i] - (other % BASE + carryOver);
+				*digit -= (other % BASE + carryOver);
 
 				*ptr /= BASE;
 
-				carryOver = nRes >= 0 ? 0 : 1;
-				_values[i] = carryOver ? nRes + BASE : nRes;
-				cnt = _values[i] ? 0 : cnt + 1u;
+				carryOver = *digit >= 0 ? 0 : 1;
+				*digit += carryOver ? BASE : 0;
+				cnt = *digit++ ? 0 : cnt + 1u;
 				++i;
 			}
 
 			for (; (cnt || carryOver) && i < _length; ++i)
 			{
-				nRes = _values[i] - carryOver;
+				*digit -= carryOver;
 
-				carryOver = nRes >= 0 ? 0 : 1;
-				_values[i] = carryOver ? nRes + BASE : nRes;
-				cnt = _values[i] ? 0 : cnt + 1u;
+				carryOver = *digit >= 0 ? 0 : 1;
+				*digit += carryOver ? BASE : 0;
+				cnt = *digit++ ? 0 : cnt + 1u;
 			}
 
 			_length -= cnt;
@@ -842,8 +898,7 @@ longNum& longNum::operator +=(const Type other)
 		if (_sign == (other >= 0))
 		{
 			// size_t += Type
-			if (*ptr < 0)
-				*ptr = -*ptr;
+			MAKE_POSITIVE(*ptr);
 
 			// Add the numbers and keep the sign
 			size_t length = _length + other;
@@ -853,37 +908,36 @@ longNum& longNum::operator +=(const Type other)
 			// Overflow: need to allocate memory
 			if (length > longNum_MAX_VALUE)
 			{
-#if defined _TRACE_
-				std::cout << " ---> Alloc (operator += <Type>)" << std::endl;
-#endif
-				size_t MAX(longNum_MAX_VALUE), i(0u);
-				digitType nRes(0), carryOver(1);
+				TRACE_MSG_IF1("Alloc (operator += <Type>)");
 
-				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH];
+				size_t MAX(longNum_MAX_VALUE), i(0u);
+				digitType carryOver(1);
+
+				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH], * digit(data);
 
 				// Imitate size_t overflow
 				length -= (longNum_MAX_VALUE + 1);
 
 				while (length)
 				{
-					nRes = MAX % BASE + length % BASE + carryOver;
+					*digit = MAX % BASE + length % BASE + carryOver;
 
 					length /= BASE;
 					MAX /= BASE;
 
-					carryOver = nRes >= BASE ? 1 : 0;
-					data[i] = carryOver ? nRes - BASE : nRes;
+					carryOver = *digit >= BASE ? 1 : 0;
+					*digit++ = carryOver ? *digit - BASE : *digit;
 					++i;
 				}
 
 				while (MAX)
 				{
-					nRes = MAX % BASE + carryOver;
+					*digit = MAX % BASE + carryOver;
 
 					MAX /= BASE;
 
-					carryOver = nRes >= BASE ? 1 : 0;
-					data[i] = carryOver ? nRes - BASE : nRes;
+					carryOver = *digit >= BASE ? 1 : 0;
+					*digit++ = carryOver ? *digit - BASE : *digit;
 					++i;
 				}
 
@@ -900,35 +954,33 @@ longNum& longNum::operator +=(const Type other)
 			// Overflow: need to allocate memory
 			if (length < _length || length < other)
 			{
-#if defined _TRACE_
-				std::cout << " ---> Alloc (operator += <Type>)" << std::endl;
-#endif
+				TRACE_MSG_IF1("Alloc (operator += <Type>)");
 
 				size_t MAX(longNum_MAX_VALUE), i(0u);
-				digitType nRes(0), carryOver(1);
+				digitType carryOver(1);
 
-				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH];
+				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH], *digit(data);
 
 				while (length)
 				{
-					nRes = MAX % BASE + length % BASE + carryOver;
+					*digit = MAX % BASE + length % BASE + carryOver;
 
 					length /= BASE;
 					MAX /= BASE;
 
-					carryOver = nRes >= BASE ? 1 : 0;
-					data[i] = carryOver ? nRes - BASE : nRes;
+					carryOver = *digit >= BASE ? 1 : 0;
+					*digit++ = carryOver ? *digit - BASE : *digit;
 					++i;
 				}
 
 				while (MAX)
 				{
-					nRes = MAX % BASE + carryOver;
+					*digit = MAX % BASE + carryOver;
 
 					MAX /= BASE;
 
-					carryOver = nRes >= BASE ? 1 : 0;
-					data[i] = carryOver ? nRes - BASE : nRes;
+					carryOver = *digit >= BASE ? 1 : 0;
+					*digit++ = carryOver ? *digit - BASE : *digit;
 					++i;
 				}
 
@@ -945,8 +997,7 @@ longNum& longNum::operator +=(const Type other)
 		else
 		{
 			// size_t -= Type
-			if (*ptr < 0)
-				*ptr = -*ptr;
+			MAKE_POSITIVE(*ptr);
 
 			// Subtract lesser from greater and keep the greater's sign
 			if (_length < other)
@@ -969,11 +1020,13 @@ longNum& longNum::operator +=(const Type other)
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: make this work
 template <>
 longNum& longNum::operator +=(const char* str)
 {
-	return *this;
+	TRACE_CODE_FLOW("longNum::operator +=(const char *)");
+
+	// TODO: rewrite with in place operation and test if this is faster
+	return *this += longNum(str);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -982,6 +1035,8 @@ longNum& longNum::operator +=(const char* str)
 // optimized
 void longNum::opPlusEqual_1(longNum& n1, const longNum& n2) const
 {
+	TRACE_CODE_FLOW("longNum::opPlusEqual_1");
+
 #if 0
 
 	// This code is slower (Tested)
@@ -1023,9 +1078,8 @@ void longNum::opPlusEqual_1(longNum& n1, const longNum& n2) const
 			// If carryOver > 0, we need to reallocate and normalize
 			if (carryOver)
 			{
-#if defined _TRACE_
-				std::cout << " ---> Alloc (opPlusEqual_1)" << std::endl;
-#endif
+				TRACE_MSG_IF1("Alloc (opPlusEqual_1)");
+
 				digitType* data = new digitType[n1._length + 1u];
 
 				memcpy(data, n1._values, sizeof(digitType) * n1._length);
@@ -1070,10 +1124,8 @@ void longNum::opPlusEqual_1(longNum& n1, const longNum& n2) const
 			if (isGreater == 3)
 			{
 				// Will need another buffer to store the result
+				TRACE_MSG_IF1("Alloc tmp buffer (opPlusEqual_1)");
 
-#if defined _TRACE_
-				std::cout << " ---> Alloc tmp buffer (opPlusEqual_1)" << std::endl;
-#endif
 				digitType* res = new digitType[pn1->_length];
 				digitType* digit(res);;
 
@@ -1139,9 +1191,10 @@ void longNum::opPlusEqual_1(longNum& n1, const longNum& n2) const
 
 // operator += helper 2 ([] += size_t)
 // optimized
-//void longNum::opPlusEqual_2(longNum& n1, const longNum& n2) const
 void longNum::opPlusEqual_2(longNum &n1, const longNum &n2, const size_t n2_length) const
 {
+	TRACE_CODE_FLOW("longNum::opPlusEqual_2");
+
 	// abs(n1) always > abs(n2)
 
 	size_t i(0u);
@@ -1175,9 +1228,8 @@ void longNum::opPlusEqual_2(longNum &n1, const longNum &n2, const size_t n2_leng
 		// If carryOver > 0, we need to reallocate and normalize
 		if (carryOver)
 		{
-#if defined _TRACE_
-			std::cout << " ---> Alloc (opPlusEqual_2)" << std::endl;
-#endif
+			TRACE_MSG_IF1("Alloc (opPlusEqual_2)");
+
 			digitType* data = new digitType[n1._length + 1u];
 
 			memcpy(data, n1._values, sizeof(digitType)* n1._length);
@@ -1230,14 +1282,14 @@ void longNum::opPlusEqual_2(longNum &n1, const longNum &n2, const size_t n2_leng
 // optimized
 void longNum::opPlusEqual_3(longNum& n1, const longNum& n2, const size_t n1_length) const
 {
+	TRACE_CODE_FLOW("longNum::opPlusEqual_3");
+
 	// abs(n1) always < abs(n2)
 
 	size_t i(0u);
 	size_t *ptr = const_cast<size_t*>(&n1_length);
 
-#if defined _TRACE_
-	std::cout << " ---> Alloc (opPlusEqual_3)" << std::endl;
-#endif
+	TRACE_MSG_IF1("Alloc (opPlusEqual_3)");
 
 	if (n1._sign == n2._sign)
 	{
@@ -1315,6 +1367,8 @@ void longNum::opPlusEqual_3(longNum& n1, const longNum& n2, const size_t n1_leng
 // optimized
 void longNum::opPlusEqual_4(longNum& n1, const longNum& n2) const
 {
+	TRACE_CODE_FLOW("longNum::opPlusEqual_4");
+
 	if (n1._sign == n2._sign)
 	{
 		// Add the numbers and keep the sign
@@ -1326,9 +1380,8 @@ void longNum::opPlusEqual_4(longNum& n1, const longNum& n2) const
 		// Overflow: need to allocate memory
 		if (length > longNum_MAX_VALUE)
 		{
-#if defined _TRACE_
-			std::cout << " ---> Alloc (opPlusEqual_4)" << std::endl;
-#endif
+			TRACE_MSG_IF1("Alloc (opPlusEqual_4)");
+
 			n1._values = new digitType[longNum_MAX_SIZE_T_LENGTH];
 			n1._length = longNum_MAX_SIZE_T_LENGTH;
 			digitType* digit(n1._values);
@@ -1370,9 +1423,8 @@ void longNum::opPlusEqual_4(longNum& n1, const longNum& n2) const
 		// Overflow: need to allocate memory
 		if (length < n1._length || length < n2._length)
 		{
-#if defined _TRACE_
-			std::cout << " ---> Alloc (opPlusEqual_4)" << std::endl;
-#endif
+			TRACE_MSG_IF1("Alloc (opPlusEqual_4)");
+
 			n1._values = new digitType[longNum_MAX_SIZE_T_LENGTH];
 			n1._length = longNum_MAX_SIZE_T_LENGTH;
 			digitType *digit(n1._values);
@@ -1432,6 +1484,8 @@ void longNum::opPlusEqual_4(longNum& n1, const longNum& n2) const
 
 longNum longNum::operator -(const longNum& other) const
 {
+	TRACE_CODE_FLOW("longNum::operator -(const longNum &)");
+
 	longNum res;
 
 	if (_sign == other._sign)
@@ -1455,6 +1509,8 @@ longNum longNum::operator -(const longNum& other) const
 template <class Type>
 longNum	longNum::operator -(const Type other) const
 {
+	TRACE_CODE_FLOW("longNum::operator -(const Type)");
+
 #if 0
 
 	return std::move(*this - longNum(other));
@@ -1489,6 +1545,8 @@ longNum	longNum::operator -(const Type other) const
 template <>
 longNum longNum::operator -(const char* str) const
 {
+	TRACE_CODE_FLOW("longNum::operator -(const char *)");
+
 	return longNum(0);
 }
 
@@ -1496,6 +1554,8 @@ longNum longNum::operator -(const char* str) const
 
 longNum& longNum::operator -=(const longNum& other)
 {
+	TRACE_CODE_FLOW("longNum::operator -=(const longNum &)");
+
 #if 0
 
 	*this = (*this - other);
@@ -1534,6 +1594,8 @@ longNum& longNum::operator -=(const longNum& other)
 
 longNum& longNum::operator -=(longNum&& other) noexcept
 {
+	TRACE_CODE_FLOW("longNum::operator -=(longNum &&)");
+
 	// (a -= b) <==> (a += -b)
 	// And we don't care about 'other', as it is an RValue
 	other._sign = !other._sign;
@@ -1543,65 +1605,226 @@ longNum& longNum::operator -=(longNum&& other) noexcept
 
 // -----------------------------------------------------------------------------------------------
 
-// pmv tested/optimized until here < --- (not further down the code)
-
 // []	  -= Type
 // size_t -= Type
 template <class Type>
 longNum& longNum::operator -=(const Type other)
 {
-#if 0
+	TRACE_CODE_FLOW("longNum::operator -=(const Type)");
 
-	*this -= longNum(other);
+	// For signed types, it is faster to just go with longNum(other)
+	if (Type(-1) < Type(0))
+	{
+		return *this -= longNum(other);
+	}
 
-#else
-
-	// (a -= b) <==> (a += -b)
-	Type* ptr = const_cast<Type*>(&other);
-
-	*this += -(*ptr);
-
-	//*this += -(*const_cast<Type*>(&other));
-
-/*
 	Type* ptr = const_cast<Type*>(&other);
 
 	if (_values)
 	{
-		if (_sign == (other >= 0))
-		{
+		size_t cnt(0u), i(0u);
+		digitType carryOver(0);
+		digitType* digit(_values);
 
+		if (_sign)
+		{
+			// Subtract numbers in place
+
+			while (*ptr)
+			{
+				*digit -= (*ptr % BASE + carryOver);
+
+				*ptr /= BASE;
+
+				carryOver = *digit >= 0 ? 0 : 1;
+				*digit += carryOver ? BASE : 0;
+				cnt = *digit++ ? 0 : cnt + 1u;
+				++i;
+			}
+
+			for (; (cnt || carryOver) && i < _length; ++i)
+			{
+				*digit -= carryOver;
+
+				carryOver = *digit >= 0 ? 0 : 1;
+				*digit += carryOver ? BASE : 0;
+				cnt = *digit++ ? 0 : cnt + 1u;
+			}
+
+			_length -= cnt;
+
+			// Need to check if we can store the number as a size_t
+			if (_length <= longNum_MAX_SIZE_T_LENGTH)
+				convertToSizeT_ifPossible();
 		}
 		else
 		{
+			// Perform adding in place
 
+			while (*ptr)
+			{
+				*digit += *ptr % BASE + carryOver;
+
+				*ptr /= BASE;
+
+				carryOver = *digit >= BASE ? 1 : 0;
+				*digit++ = carryOver ? *digit - BASE : *digit;
+				++i;
+			}
+
+			for (; carryOver && i < _length; ++i)
+			{
+				*digit += carryOver;
+
+				carryOver = *digit >= BASE ? 1 : 0;
+				*digit++ = carryOver ? *digit - BASE : *digit;
+			}
+
+			// If carryOver > 0, we need to reallocate and normalize
+			if (carryOver)
+			{
+				TRACE_MSG_IF1("Alloc (operator -= <Type>)");
+
+				digitType* data = new digitType[_length + 1u];
+
+				memcpy(data, _values, sizeof(digitType) * _length);
+				data[_length++] = carryOver;
+
+				delete[] _values;
+				_values = data;
+			}
 		}
 	}
 	else
 	{
-		if (_sign == (other >= 0))
+		if (_sign)
 		{
+			// Subtract lesser from greater and keep the greater's sign
 
+			if (_length < other)
+			{
+				_length = other - _length;
+				_sign = !_sign;
+			}
+			else
+			{
+				_length -= other;
+			}
+
+			if (!_length)
+				_sign = POS;
 		}
 		else
 		{
+			// Add the numbers and keep the sign
 
-		}
-	}
-*/
+			size_t length = _length + other;
+
+#if defined _IS_LESSER_
+
+			// Overflow: need to allocate memory
+			if (length < _length || length < other)
+			{
+				TRACE_MSG_IF1("Alloc (operator -= <Type>)");
+
+				size_t MAX(longNum_MAX_VALUE), i(0u);
+				digitType carryOver(1);
+
+				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH], * digit(data);
+
+				// Imitate size_t overflow
+				length -= (longNum_MAX_VALUE + 1);
+
+				while (length)
+				{
+					*digit = MAX % BASE + length % BASE + carryOver;
+
+					length /= BASE;
+					MAX /= BASE;
+
+					carryOver = *digit >= BASE ? 1 : 0;
+					*digit++ = carryOver ? *digit - BASE : *digit;
+					++i;
+				}
+
+				while (MAX)
+				{
+					*digit = MAX % BASE + carryOver;
+
+					MAX /= BASE;
+
+					carryOver = *digit >= BASE ? 1 : 0;
+					*digit++ = carryOver ? *digit - BASE : *digit;
+					++i;
+				}
+
+				_length = i;
+				_values = data;
+			}
+			else
+			{
+				_length = length;
+			}
+
+#else
+
+			// Overflow: need to allocate memory
+			if (length < _length || length < other)
+			{
+				TRACE_MSG_IF1("Alloc (operator -= <Type>)");
+
+				size_t MAX(longNum_MAX_VALUE), i(0u);
+				digitType carryOver(1);
+
+				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH], * digit(data);
+
+				while (length)
+				{
+					*digit = MAX % BASE + length % BASE + carryOver;
+
+					length /= BASE;
+					MAX /= BASE;
+
+					carryOver = *digit >= BASE ? 1 : 0;
+					*digit++ = carryOver ? *digit - BASE : *digit;
+					++i;
+				}
+
+				while (MAX)
+				{
+					*digit = MAX % BASE + carryOver;
+
+					MAX /= BASE;
+
+					carryOver = *digit >= BASE ? 1 : 0;
+					*digit++ = carryOver ? *digit - BASE : *digit;
+					++i;
+				}
+
+				_length = i;
+				_values = data;
+			}
+			else
+			{
+				_length = length;
+			}
 
 #endif
+		}
+	}
 
 	return *this;
 }
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: make this work
 template <>
 longNum& longNum::operator -=(const char* str)
 {
-	return *this;
+	TRACE_CODE_FLOW("longNum::operator -=(const char *)");
+
+	// TODO: rewrite with in place operation and test if this is faster
+	return *this -= longNum(str);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -1609,6 +1832,8 @@ longNum& longNum::operator -=(const char* str)
 // operator -= helper 1 ([] -= [])
 void longNum::opMinusEqual_1(longNum& n1, const longNum& n2) const
 {
+	TRACE_CODE_FLOW("longNum::opMinusEqual_1");
+
 	if (n1._sign == n2._sign)
 	{
 		// In case the signs are the same, we subtract smaller number from the greater
@@ -1646,9 +1871,8 @@ void longNum::opMinusEqual_1(longNum& n1, const longNum& n2) const
 			{
 				// Will need another buffer to store the result
 
-#if defined _TRACE_
-				std::cout << " ---> Alloc tmp buffer (opMinusEqual_1)" << std::endl;
-#endif
+				TRACE_MSG_IF1("Alloc tmp buffer (opMinusEqual_1)");
+
 				digitType* res = new digitType[pn1->_length];
 				digitType* digit(res);
 
@@ -1738,9 +1962,8 @@ void longNum::opMinusEqual_1(longNum& n1, const longNum& n2) const
 			// If carryOver > 0, we need to reallocate and normalize
 			if (carryOver)
 			{
-#if defined _TRACE_
-				std::cout << " ---> Alloc (opMinusEqual_1)" << std::endl;
-#endif
+				TRACE_MSG_IF1("Alloc (opMinusEqual_1)");
+
 				digitType* data = new digitType[n1._length + 1u];
 
 				memcpy(data, n1._values, sizeof(digitType) * n1._length);
@@ -1760,6 +1983,8 @@ void longNum::opMinusEqual_1(longNum& n1, const longNum& n2) const
 // operator -= helper 2 ([] -= size_t)
 void longNum::opMinusEqual_2(longNum& n1, const longNum& n2, const size_t n2_length) const
 {
+	TRACE_CODE_FLOW("longNum::opMinusEqual_2");
+
 	// abs(n1) always > abs(n2)
 
 	size_t i(0u);
@@ -1826,9 +2051,8 @@ void longNum::opMinusEqual_2(longNum& n1, const longNum& n2, const size_t n2_len
 		// If carryOver > 0, we need to reallocate and normalize
 		if (carryOver)
 		{
-#if defined _TRACE_
-			std::cout << " ---> Alloc (opMinusEqual_2)" << std::endl;
-#endif
+			TRACE_MSG_IF1("Alloc (opMinusEqual_2)");
+
 			digitType* data = new digitType[n1._length + 1u];
 
 			memcpy(data, n1._values, sizeof(digitType) * n1._length);
@@ -1847,14 +2071,14 @@ void longNum::opMinusEqual_2(longNum& n1, const longNum& n2, const size_t n2_len
 // operator -= helper 3 (size_t -= [])
 void longNum::opMinusEqual_3(longNum& n1, const longNum& n2, const size_t n1_length) const
 {
+	TRACE_CODE_FLOW("longNum::opMinusEqual_3");
+
 	// abs(n1) always < abs(n2)
 
 	size_t i(0u);
 	size_t* ptr = const_cast<size_t*>(&n1_length);
 
-#if defined _TRACE_
-	std::cout << " ---> Alloc (opMinusEqual_3)" << std::endl;
-#endif
+	TRACE_MSG_IF1("Alloc (opMinusEqual_3)");
 
 	if (n1._sign == n2._sign)
 	{
@@ -1931,6 +2155,8 @@ void longNum::opMinusEqual_3(longNum& n1, const longNum& n2, const size_t n1_len
 // operator -= helper 4 (size_t -= size_t)
 void longNum::opMinusEqual_4(longNum& n1, const longNum& n2) const
 {
+	TRACE_CODE_FLOW("longNum::opMinusEqual_4");
+
 	if (n1._sign == n2._sign)
 	{
 		// Subtract lesser from greater and keep the greater's sign
@@ -1960,9 +2186,8 @@ void longNum::opMinusEqual_4(longNum& n1, const longNum& n2) const
 		// Overflow: need to allocate memory
 		if (length > longNum_MAX_VALUE)
 		{
-#if defined _TRACE_
-			std::cout << " ---> Alloc (opMinusEqual_4)" << std::endl;
-#endif
+			TRACE_MSG_IF1("Alloc (opMinusEqual_4)");
+
 			n1._values = new digitType[longNum_MAX_SIZE_T_LENGTH];
 			n1._length = longNum_MAX_SIZE_T_LENGTH;
 			digitType* digit(n1._values);
@@ -2004,9 +2229,8 @@ void longNum::opMinusEqual_4(longNum& n1, const longNum& n2) const
 		// Overflow: need to allocate memory
 		if (length < n1._length || length < n2._length)
 		{
-#if defined _TRACE_
-			std::cout << " ---> Alloc (opMinusEqual_4)" << std::endl;
-#endif
+			TRACE_MSG_IF1("Alloc (opMinusEqual_4)");
+
 			n1._values = new digitType[longNum_MAX_SIZE_T_LENGTH];
 			n1._length = longNum_MAX_SIZE_T_LENGTH;
 			digitType* digit(n1._values);
@@ -2048,18 +2272,26 @@ void longNum::opMinusEqual_4(longNum& n1, const longNum& n2) const
 
 // -----------------------------------------------------------------------------------------------
 
+// pmv tested/optimized until here < --- (not further down the code)
+
+// TODO: indexing to pointers
+
 // This implementation is almost 2 times faster than standard "return *this += longNum(1l)"
 longNum& longNum::operator ++()
 {
-	if (_length)
+	TRACE_CODE_FLOW("longNum::operator ++()");
+
+	if (_values)
 	{
-		// General case
 		if (_sign)
 		{
+			// [] + 1
+
 			if (_values[0] != 9)
 			{
 				// It is the same as within the for-loop, but without the cycle -- should be a bit faster
-				_values[0]++;
+				_values[0];
+				return *this;
 			}
 			else
 			{
@@ -2069,16 +2301,15 @@ longNum& longNum::operator ++()
 				{
 					if (_values[i] != 9)
 					{
-						_values[i]++;
+						_values[i];
 						return *this;
 					}
 
 					_values[i] = 0;
 				}
 
-#if defined _TRACE_
-				std::cout << " ---> Alloc for " << _length + 1 << " digits" << std::endl;
-#endif
+				TRACE_MSG_IF3("Alloc for ", _length + 1, " digits (operator++)");
+
 				// In case we reached this point, the array is full of '9's
 				// Will need to realloc: 999 + 1 = 1000
 				delete[] _values;
@@ -2091,12 +2322,11 @@ longNum& longNum::operator ++()
 		}
 		else
 		{
+			// [] - 1
+
 			if (_values[0] != 0)
 			{
 				_values[0]--;
-
-				if (_values[0] == 0 && _length == 1)
-					_sign = POS;
 			}
 			else
 			{
@@ -2117,21 +2347,47 @@ longNum& longNum::operator ++()
 					_values[i] = 9;
 				}
 			}
+
+			// Need to check if we can store the number as a size_t
+			if (_length == longNum_MAX_SIZE_T_LENGTH)
+				convertToSizeT_ifPossible();
 		}
 	}
 	else
 	{
-		// Deep zero state. Will return 1
-#if defined _TRACE_
-		std::cout << " ---> Alloc for zero" << std::endl;
-#endif
-		if (_values)
-			delete[] _values;
+		if (_sign)
+		{
+			// size_t + 1
 
-		_values = new digitType[1];
-		_values[0] = 1;
-		_length = 1;
-		_sign = POS;
+			_length++;
+
+#if defined _IS_LESSER_
+			// Imitate overflow:
+			if (_length > longNum_MAX_VALUE)
+				_length = 0u;
+
+			fill_maxSizeT();
+#endif
+
+			if (_length == 0u)
+			{
+				// Overflow. Allocate the array
+				TRACE_MSG_IF3("Alloc for ", longNum_MAX_SIZE_T_LENGTH, " digits (operator++)");
+
+				_values = new digitType[longNum_MAX_SIZE_T_LENGTH];
+				_length = longNum_MAX_SIZE_T_LENGTH;
+
+				for (size_t i = 0; i < longNum_MAX_SIZE_T_LENGTH; ++i)
+					_values[i] = maxSizeT[i];
+
+				_values[0]++;
+			}
+		}
+		else
+		{
+			// size_t - 1
+			_sign = --_length == 0u ? POS : _sign;
+		}
 	}
 
 	return *this;
@@ -2141,6 +2397,8 @@ longNum& longNum::operator ++()
 
 longNum& longNum::operator --()
 {
+	TRACE_CODE_FLOW("longNum::operator --()");
+
 	if (_length)
 	{
 		// General case
@@ -2199,9 +2457,8 @@ longNum& longNum::operator --()
 					_values[i] = 0;
 				}
 
-#if defined _TRACE_
-				std::cout << " ---> Alloc for " << _length + 1 << " digits" << std::endl;
-#endif
+				TRACE_MSG_IF3("Alloc for ", _length + 1, " digits (operator--)");
+
 				// In case we reached this point, the array is full of '9's
 				// Will need to realloc: 999 + 1 = 1000
 				delete[] _values;
@@ -2216,9 +2473,8 @@ longNum& longNum::operator --()
 	else
 	{
 		// Deep zero state. Will return 1
-#if defined _TRACE_
-		std::cout << " ---> Alloc for zero" << std::endl;
-#endif
+		TRACE_MSG_IF1("Alloc for zero");
+
 		if (_values)
 			delete[] _values;
 
@@ -2233,10 +2489,11 @@ longNum& longNum::operator --()
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO :: rewrite, now its wrong
 longNum::operator bool() const
 {
-	return _length != 1 || _values[0] != 0;
+	TRACE_CODE_FLOW("longNum::operator bool()");
+
+	return _values ? (_length != 1u || _values[0] != 0) : (_length != 0u);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -2244,6 +2501,8 @@ longNum::operator bool() const
 // Return number as a string in a normal readable order
 std::string longNum::get() const
 {
+	TRACE_CODE_FLOW("longNum::get()");
+
 	std::string str;
 
 	if (_values)
@@ -2300,6 +2559,8 @@ std::string longNum::get() const
 // No check for size_t overflow is performed
 size_t longNum::as_size_t() const
 {
+	TRACE_CODE_FLOW("longNum::as_size_t()");
+
 	if (_values)
 	{
 		size_t res(0);
@@ -2323,6 +2584,8 @@ size_t longNum::as_size_t() const
 // operator +/- helper: Adds 2 positive longNums
 void longNum::add2positive(const longNum& n1, const longNum& n2, longNum& res) const
 {
+	TRACE_CODE_FLOW("longNum::add2positive()");
+
 	if (n1._values)
 	{
 		if (n2._values)
@@ -2359,6 +2622,8 @@ void longNum::add2positive(const longNum& n1, const longNum& n2, longNum& res) c
 // optimized
 void longNum::add2positive_1(const longNum& n1, const longNum& n2, longNum& res) const
 {
+	TRACE_CODE_FLOW("longNum::add2positive_1");
+
 	// The longest number will be the first
 	const longNum* p1(&n1);
 	const longNum* p2(&n2);
@@ -2369,9 +2634,7 @@ void longNum::add2positive_1(const longNum& n1, const longNum& n2, longNum& res)
 		p2 = &n1;
 	}
 
-#if defined _TRACE_
-	std::cout << " ---> Alloc (add2positive_1)" << std::endl;
-#endif
+	TRACE_MSG_IF1("Alloc (add2positive_1)");
 
 	res._length = p1->_length;
 	res._values = new digitType[p1->_length + 1u];
@@ -2411,6 +2674,8 @@ void longNum::add2positive_1(const longNum& n1, const longNum& n2, longNum& res)
 // optimized
 void longNum::add2positive_2(const longNum& n1, const longNum& n2, longNum& res) const
 {
+	TRACE_CODE_FLOW("longNum::add2positive_2");
+
 	res._length = n1._length + n2._length;
 
 #if defined _IS_LESSER_
@@ -2418,9 +2683,7 @@ void longNum::add2positive_2(const longNum& n1, const longNum& n2, longNum& res)
 	// Overflow: need to allocate memory
 	if (res._length > longNum_MAX_VALUE)
 	{
-#if defined _TRACE_
-		std::cout << " ---> Alloc (add2positive_2)" << std::endl;
-#endif
+		TRACE_MSG_IF1("Alloc (add2positive_2)");
 
 		size_t MAX(longNum_MAX_VALUE), i(0u);
 		digitType nRes(0), carryOver(1);
@@ -2460,9 +2723,7 @@ void longNum::add2positive_2(const longNum& n1, const longNum& n2, longNum& res)
 	// Overflow: need to allocate memory
 	if (res._length < n1._length || res._length < n2._length)
 	{
-#if defined _TRACE_
-		std::cout << " ---> Alloc (add2positive_2)" << std::endl;
-#endif
+		TRACE_MSG_IF1("Alloc (add2positive_2)");
 
 		size_t MAX(longNum_MAX_VALUE), i(0u);
 		digitType nRes(0), carryOver(1);
@@ -2505,11 +2766,11 @@ void longNum::add2positive_2(const longNum& n1, const longNum& n2, longNum& res)
 // optimized
 void longNum::add2positive_3(const longNum& n1, const size_t n2, longNum& res) const
 {
+	TRACE_CODE_FLOW("longNum::add2positive_3");
+
 	size_t* ptr = const_cast<size_t*>(&n2);
 
-#if defined _TRACE_
-	std::cout << " ---> Alloc (add2positive_3)" << std::endl;
-#endif
+	TRACE_MSG_IF1("Alloc (add2positive_3)");
 
 	size_t i(0u);
 	digitType nRes(0), carryOver(0);
@@ -2551,6 +2812,8 @@ void longNum::add2positive_3(const longNum& n1, const size_t n2, longNum& res) c
 template <class Type>
 void longNum::add2positive(const longNum& n1, const Type n2, longNum& res) const
 {
+	TRACE_CODE_FLOW("longNum::add2positive <Type>");
+
 	size_t i(0u);
 	digitType nRes(0);
 	Type* ptr = const_cast<Type*>(&n2);
@@ -2566,9 +2829,7 @@ void longNum::add2positive(const longNum& n1, const Type n2, longNum& res) const
 	// Add 2 positive numbers: [] + Type
 	if (n1._values)
 	{
-#if defined _TRACE_
-		std::cout << " ---> Alloc (add2positive<Type>)" << std::endl;
-#endif
+		TRACE_MSG_IF1("Alloc (add2positive<Type>)");
 
 		digitType carryOver(0);
 
@@ -2611,9 +2872,7 @@ void longNum::add2positive(const longNum& n1, const Type n2, longNum& res) const
 	// Overflow: need to allocate memory
 	if (res._length > longNum_MAX_VALUE)
 	{
-#if defined _TRACE_
-		std::cout << " ---> Alloc (add2positive<Type>)" << std::endl;
-#endif
+		TRACE_MSG_IF1("Alloc (add2positive<Type>)");
 
 		size_t MAX(longNum_MAX_VALUE);
 		digitType carryOver(1);
@@ -2653,9 +2912,7 @@ void longNum::add2positive(const longNum& n1, const Type n2, longNum& res) const
 	// Overflow: need to allocate memory
 	if (res._length < n1._length || res._length < n2)
 	{
-#if defined _TRACE_
-		std::cout << " ---> Alloc (add2positive<Type>)" << std::endl;
-#endif
+		TRACE_MSG_IF1("Alloc (add2positive<Type>)");
 
 		size_t MAX(longNum_MAX_VALUE);
 		digitType carryOver(1);
@@ -2700,6 +2957,8 @@ void longNum::add2positive(const longNum& n1, const Type n2, longNum& res) const
 //	true  : n1 <  n2
 bool longNum::subtr2positive(const longNum& n1, const longNum& n2, longNum& res) const
 {
+	TRACE_CODE_FLOW("longNum::subtr2positive()");
+
 	if (n1._values)
 	{
 		if (n2._values)
@@ -2736,6 +2995,8 @@ bool longNum::subtr2positive(const longNum& n1, const longNum& n2, longNum& res)
 // optimized
 bool longNum::subtr2positive_1(const longNum& n1, const longNum& n2, longNum& res) const
 {
+	TRACE_CODE_FLOW("longNum::subtr2positive_1");
+
 	bool bRes = true;
 
 	// First, we need to determine which number's absolute value is greater
@@ -2744,9 +3005,7 @@ bool longNum::subtr2positive_1(const longNum& n1, const longNum& n2, longNum& re
 	// The numbers are equal: just return 0
 	if (!isGreater)
 	{
-#if defined _TRACE_
-		std::cout << " ---> longNum converted to size_t : 0" << std::endl;
-#endif
+		TRACE_MSG_IF1("longNum converted to size_t : 0");
 
 		if (res._values)
 			delete[] res._values;
@@ -2768,9 +3027,7 @@ bool longNum::subtr2positive_1(const longNum& n1, const longNum& n2, longNum& re
 		bRes = false;
 	}
 
-#if defined _TRACE_
-	std::cout << " ---> Alloc (subtr2positive_1)" << std::endl;
-#endif
+	TRACE_MSG_IF1("Alloc (subtr2positive_1)");
 
 	res._length = pn1->_length;
 	res._values = new digitType[pn1->_length];
@@ -2814,6 +3071,8 @@ bool longNum::subtr2positive_1(const longNum& n1, const longNum& n2, longNum& re
 // optimized
 bool longNum::subtr2positive_2(const longNum& n1, const longNum& n2, longNum& res) const
 {
+	TRACE_CODE_FLOW("longNum::subtr2positive_2");
+
 	if (n1._length < n2._length)
 	{
 		res._length = n2._length - n1._length;
@@ -2834,11 +3093,12 @@ bool longNum::subtr2positive_2(const longNum& n1, const longNum& n2, longNum& re
 // optimized
 bool longNum::subtr2positive_3(const longNum& n1, const size_t n2, longNum& res) const
 {
+	TRACE_CODE_FLOW("longNum::subtr2positive_3");
+
 	size_t *ptr = const_cast<size_t*>(&n2);
 
-#if defined _TRACE_
-	std::cout << " ---> Alloc (subtr2positive_3)" << std::endl;
-#endif
+	TRACE_MSG_IF1("Alloc (subtr2positive_3)");
+
 	res._length = n1._length;
 	res._values = new digitType[n1._length];
 
@@ -2887,6 +3147,8 @@ bool longNum::subtr2positive_3(const longNum& n1, const size_t n2, longNum& res)
 template <class Type>
 bool longNum::subtr2positive(const longNum& n1, const Type n2, longNum& res) const
 {
+	TRACE_CODE_FLOW("longNum::subtr2positive <Type>");
+
 	Type* ptr = const_cast<Type*>(&n2);
 
 	// #pragma warning (disable:4146)
@@ -2896,9 +3158,7 @@ bool longNum::subtr2positive(const longNum& n1, const Type n2, longNum& res) con
 	if (n1._values)
 	{
 		// Subtract 2 positive numbers: [] - Type
-#if defined _TRACE_
-		std::cout << " ---> Alloc (subtr2positive<Type>)" << std::endl;
-#endif
+		TRACE_MSG_IF1("Alloc (subtr2positive<Type>)");
 
 		res._length = n1._length;
 		res._values = new digitType[n1._length];
@@ -2960,6 +3220,8 @@ bool longNum::subtr2positive(const longNum& n1, const Type n2, longNum& res) con
 // n1 == n2	-- 0
 int longNum::absValueIsLarger(const longNum& n1, const longNum& n2) const
 {
+	TRACE_CODE_FLOW("longNum::absValueIsLarger()");
+
 	if (n1._length > n2._length)
 		return 1;
 
@@ -2987,29 +3249,22 @@ int longNum::absValueIsLarger(const longNum& n1, const longNum& n2) const
 // -----------------------------------------------------------------------------------------------
 
 // Tries to store the number as size_t
-// Pre-condition: _values is allocated, _length is holding length, not value
+// Pre-condition: _values is allocated, _length is holding the actual length, not value
 void longNum::convertToSizeT_ifPossible()
 {
+	TRACE_CODE_FLOW("longNum::convertToSizeT_ifPossible()");
+
 #if defined _IS_LESSER_
 
-	static digitType maxSizeT[10] = { -1 };
-
-	if (maxSizeT[0] == -1)
-	{
-		size_t num(longNum_MAX_VALUE), i(0);
-		while (num)
-		{
-			maxSizeT[i++] = num % BASE;
-			num /= BASE;
-		}
-	}
-
+	fill_maxSizeT();
+		
 #else
+
 	// max size_t = 18446744073709551615
-	static digitType maxSizeT[] = { 5, 1, 6, 1, 5, 5, 9, 0, 7, 3, 7, 0, 4, 4, 7, 6, 4, 4, 8, 1 };
+
 #endif
 
-	if (_length < longNum_MAX_SIZE_T_LENGTH_PLUS_ONE)
+	if (_length <= longNum_MAX_SIZE_T_LENGTH)
 	{
 		size_t i(_length);
 
@@ -3039,9 +3294,7 @@ void longNum::convertToSizeT_ifPossible()
 		if (!_length)
 			_sign = POS;
 
-#if defined _TRACE_
-		std::cout << " ---> longNum converted to size_t : " << _length << std::endl;
-#endif
+		TRACE_MSG_IF2("longNum converted to size_t: ", _length);
 	}
 
 	return;
@@ -3051,6 +3304,8 @@ void longNum::convertToSizeT_ifPossible()
 
 void longNum::flipSign()
 {
+	TRACE_CODE_FLOW("longNum::flipSign()");
+
 	_sign = !_sign;
 }
 
@@ -3058,6 +3313,8 @@ void longNum::flipSign()
 
 bool longNum::getSign() const
 {
+	TRACE_CODE_FLOW("longNum::getSign()");
+
 	return _sign;
 }
 
@@ -3065,6 +3322,8 @@ bool longNum::getSign() const
 
 size_t longNum::getLength() const
 {
+	TRACE_CODE_FLOW("longNum::getLength()");
+
 	return _length;
 }
 
@@ -3072,6 +3331,8 @@ size_t longNum::getLength() const
 
 longNum::digitType* longNum::getValues() const
 {
+	TRACE_CODE_FLOW("longNum::getValues()");
+
 	return _values;
 }
 
@@ -3079,14 +3340,44 @@ longNum::digitType* longNum::getValues() const
 
 bool longNum::isMalformed() const
 {
+	TRACE_CODE_FLOW("longNum::isMalformed()");
+
 	if (_values && as_size_t() <= longNum_MAX_VALUE)
 		return true;
 
 	if (!_values && as_size_t() > longNum_MAX_VALUE)
 		return true;
 
+	if(_length == 0 && _sign != POS)
+		return true;
+
 	return false;
 };
+
+// -----------------------------------------------------------------------------------------------
+
+void longNum::fill_maxSizeT()
+{
+#if defined _IS_LESSER_
+
+	static bool isOk(false);
+
+	if (!isOk)
+	{
+		size_t num(longNum_MAX_VALUE), i(0);
+		while (num)
+		{
+			maxSizeT[i++] = num % BASE;
+			num /= BASE;
+		}
+
+		isOk = true;
+	}
+
+#endif
+
+	return;
+}
 
 // -----------------------------------------------------------------------------------------------
 
@@ -3126,7 +3417,13 @@ int testLesser(const long N)
 
 	if (1)
 	{
-		aaa();
+		testOperatorPlusPlus();
+		return 0;
+	}
+
+	if (0)
+	{
+		testOperatorMinusEqualsTemplated();
 		return 0;
 	}
 
@@ -3609,21 +3906,108 @@ int testLesser(const long N)
 					std::cout << " -- ERROR 3 in operator -= " << std::endl;
 					return 1;
 				}
-/*
-				// operator -= -- templated
-				n1 -= i;
-				n1 -= j;
 
-				if (n1 != i - i - j - j)
+				if (n1.isMalformed() || n2.isMalformed())
 				{
-					std::cout << " -- ERROR 4 in operator += " << std::endl;
+					std::cout << " -- ERROR 4 in operator += : malformed longNum : " << i << " += " << j << std::endl;
 					return 1;
 				}
-*/
+
+				// Must skip the case where i or j is larger than max allowed value
+				// In real world this case won't be a problem, as a [] is always greater than any built-in type
+				if (i >= maxValNeg && i <= maxValPos && j >= maxValNeg && j <= maxValPos)
+				{
+					// operator -= -- templated
+					n1 -= i;
+					n1 -= j;
+
+					if (n1 != i - i - j - j)
+					{
+						std::cout << " -- ERROR 5 in operator -= : " << i << " -= " << j << " ::: Expected " << (i - j) << ", got " << n1.get() << std::endl;
+						return 1;
+					}
+				}
+
+				if (n1.isMalformed())
+				{
+					std::cout << " -- ERROR 6 in operator -= : malformed longNum" << std::endl;
+					return 1;
+				}
 			}
 
 			// --------------------------------------------------------------------------
 
+			// operator ++()
+			{
+				longNum n1(i);
+
+				++n1;
+
+				if (n1 != i + 1)
+				{
+					std::cout << " -- ERROR 1 in operator ++() : " << i << "++ != " << i + 1 << " ( is " << n1.get() << ")" << std::endl;
+					return 1;
+				}
+
+				if (n1.isMalformed())
+				{
+					std::cout << " -- ERROR 2 in operator ++() : longNum(" << i << ")++ is malformed" << std::endl;
+					return 1;
+				}
+			}
+
+			// --------------------------------------------------------------------------
+
+			// operator --()
+			{
+
+			}
+
+			// --------------------------------------------------------------------------
+
+			// operator bool()
+			{
+				longNum n1(i), n2(j);
+
+				if ((n1 && n2) != (i && j) || (n1 || n2) != (i || j))
+				{
+					std::cout << " -- ERROR 1 in operator bool() : " << i << " bool " << j << std::endl;
+					return 1;
+				}
+
+				if (!n1 != !i)
+				{
+					std::cout << " -- ERROR 2 in operator bool() : " << i << " bool " << j << std::endl;
+					return 1;
+				}
+
+				if (!n2 != !j)
+				{
+					std::cout << " -- ERROR 3 in operator bool() : " << i << " bool " << j << std::endl;
+					return 1;
+				}
+
+				if (n1 != i || n2 != j)
+				{
+					std::cout << " -- ERROR 4 in operator bool() : const values changed" << std::endl;
+					return 1;
+				}
+			}
+
+			// --------------------------------------------------------------------------
+
+			// std::string get() const
+			{
+				longNum n1(i), n2(j);
+
+				if (std::to_string(i) != n1.get() || std::to_string(j) != n2.get())
+				{
+					std::cout << " -- ERROR 1 in std::string get()" << std::endl;
+					return 1;
+				}
+			}
+
+			// --------------------------------------------------------------------------
 		}
 
 		int prct = getPercentage(N, i);
@@ -3640,73 +4024,6 @@ int testLesser(const long N)
 }
 
 // -----------------------------------------------------------------------------------------------
-
-#if 0
-
-int testLarger()
-{
-	size_t doStop = 0, answer = 0;
-
-	long N = 1001;
-
-	for (long i = -N; i <= N && !doStop; i++)
-	{
-		for (long j = -N; j <= N && !doStop; j++)
-		{
-
-			// --------------------------------------------------------------------------
-#if 0
-
-			// operator bool()
-			{
-				longNum n1(i), n2(j);
-
-				if ((n1 && n2) != (i && j) || (n1 || n2) != (i || j))
-				{
-					doStop = 1;
-					std::cout << " -- ERROR 1 in operator bool() : " << i << " bool " << j << std::endl;
-					break;
-				}
-
-				if (!n1 != !i)
-				{
-					doStop = 1;
-					std::cout << " -- ERROR 2 in operator bool() : " << i << " bool " << j << std::endl;
-					break;
-				}
-
-				if (!n2 != !j)
-				{
-					doStop = 1;
-					std::cout << " -- ERROR 3 in operator bool() : " << i << " bool " << j << std::endl;
-					break;
-				}
-
-				if (n1 != i || n2 != j)
-				{
-					doStop = 1;
-					std::cout << " -- ERROR 4 in operator bool() : const values changed" << std::endl;
-					break;
-				}
-			}
-
-			// std::string get() const
-			{
-				longNum n1(i), n2(j);
-
-				if (std::to_string(i) != n1.get() || std::to_string(j) != n2.get())
-				{
-					doStop = 1;
-					std::cout << " -- ERROR 1 in std::string get()" << std::endl;
-					break;
-				}
-			}
-#endif
-		}
-	}
-}
-
-#endif
 
 void testOperatorMinus()
 {
@@ -4019,7 +4336,7 @@ void testOperatorPlusEqualsTemplated()
 	size_t num1 = 293456789813;
 	size_t num2 = 293456789813;
 
-	// 30.774 -- 5.832
+	// 30.774 -- 5.832 -- 5.143
 
 	for (long long i = 0; i < maxval; i += incr)
 	{
@@ -4157,7 +4474,215 @@ void testOperatorMinusEquals()
 	return;
 }
 
+void testOperatorMinusEqualsTemplated()
+{
+	longNum n0("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+	longNum n1("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+	longNum res;
+
+	size_t num = 499999999;
+
+	// longNum_long -= size_t
+	// new ver is faster
+	if (1)
+	{
+		//n0.flipSign();
+
+		// n0 > 0: 20.901  /  19.914
+		// n0 < 0: 15.8    /  14.96
+
+		size_t type(0);
+		size_t incr = (size_t(-1) / num);
+
+		for (size_t i = 0; i < num + 1; i++)
+		{
+			n0 -= type;
+			type += incr;
+		}
+
+		return;
+	}
+
+	// longNum_short -= size_t
+	// new ver is faster
+	if (0)
+	{
+		size_t type(0);
+		size_t incr = (size_t(-1) / num);
+
+		for (size_t i = 0; i < 10u * (num + 1); i++)
+		{
+			longNum n2(size_t(-1));					// 19.04  /  12.651
+//			longNum n2(987654321);					// 19.04  /  12.684
+
+//			longNum n2(-1);							// 18.94  /  12.69
+//			n2.flipSign();
+
+//			longNum n2(987654321);					// 17.4   /  12.6
+//			n2.flipSign();
+
+			n2 -= type;
+			type += incr;
+		}
+
+		return;
+	}
+
+	// longNum_long -= long long
+	if (0)
+	{
+		long long maxval = size_t(-1) / 2;
+		long long type(0);
+		long long incr = maxval / num;
+
+		//n0.flipSign();
+
+		// 20.642  / 19.605
+
+		for (size_t i = 0; i < num + 1; i++)
+		{
+			n0 -= type;
+			type += incr;							// 20.788  /  22.019
+			//type -= incr;							// 15.789  /  18.445
+
+			// n0 < 0, type > 0:					// 15.632  /  18.806
+			// n0 < 0, type < 0:					// 20.091  /  21.997
+		}
+
+		return;
+	}
+
+	// longNum_short -= long long
+	if (0)
+	{
+		long long maxval = size_t(-1) / 2;
+		long long type(0);
+		long long incr = maxval / num;
+
+		for (size_t i = 0; i < num + 1; i++)
+		{
+			longNum n0(maxval);
+
+			n0 -= type;
+			type += incr;							// 2.183  /  1.37
+			//type -= incr;							// 15.789  /  18.445
+
+			// n0 < 0, type > 0:					// 15.632  /  18.806
+			// n0 < 0, type < 0:					// 20.091  /  21.997
+		}
+
+		return;
+	}
+
+	// long > 0
+	if (0)
+	{
+		long maxval = 2147483647;
+		long type(0);
+		long incr = maxval / long(num);
+
+		// old 11.8 -- new 12.0
+
+		for (size_t i = 0; i < num + 1; i++)
+		{
+			n0 -= type;
+			type += incr;
+		}
+
+		return;
+	}
+
+	// long < 0
+	if (0)
+	{
+		long maxval = 2147483647;
+		long type(0);
+		long incr = maxval / long(num);
+
+		// old 9.42 -- new 8.71
+
+		for (size_t i = 0; i < num + 1; i++)
+		{
+			n0 -= type;
+			type -= incr;
+		}
+
+		return;
+	}
+
+	// int > 0
+	if (0)
+	{
+		int maxval = 2147483647;
+		int type(0);
+		int incr = maxval / int(num);
+
+		// old 11.781 -- new 12.157
+
+		for (size_t i = 0; i < num + 1; i++)
+		{
+			n0 -= type;
+			type += incr;
+		}
+
+		return;
+	}
+
+	// int < 0
+	if (0)
+	{
+		int maxval = 2147483647;
+		int type(0);
+		int incr = maxval / int(num);
+
+		// old 8.386 -- new 9.412
+
+		for (size_t i = 0; i < num + 1; i++)
+		{
+			n0 -= type;
+			type -= incr;
+		}
+
+		return;
+	}
+
+	return;
+}
+
+void testOperatorPlusPlus()
+{
+	// -size_t to +size_t
+	if(0)
+	{
+		longNum n(4999999999);
+		n.flipSign();
+
+		// 18.073 -- 15.561
+		for (size_t i = 0; i < 9999999999; ++i)
+		{
+			++n;
+		}
+
+		return;
+	}
+
+	if (1)
+	{
+		longNum n("999999999123709551615");
+
+		// 14.531
+		for (size_t i = 0; i < 9999999999; ++i)
+		{
+			++n;
+		}
+
+		return;
+	}
+
+	return;
+}
+
 void aaa()
 {
-	testOperatorMinusEquals();
+
 }

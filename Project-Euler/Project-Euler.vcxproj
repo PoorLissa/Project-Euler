@@ -152,6 +152,7 @@
     <ClInclude Include="__longNum.h" />
     <ClInclude Include="__Primes.h" />
     <ClInclude Include="__stringNum.h" />
+    <ClInclude Include="__test.h" />
     <ClInclude Include="__Threads.h" />
   </ItemGroup>
   <ItemGroup>

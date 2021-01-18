@@ -16,32 +16,50 @@
 
 // -----------------------------------------------------------------------------------------------
 
+// --- Permanent Defines ---
+
+#define TRACE_MSG1(msg1)				std::cout << " ---> " << msg1 << std::endl;
+#define TRACE_MSG2(msg1, msg2)			std::cout << " ---> " << msg1 << msg2 << std::endl;
+#define TRACE_MSG3(msg1, msg2, msg3)	std::cout << " ---> " << msg1 << msg2 << msg3 << std::endl;
+
+#define MAKE_POSITIVE(val) val = (val < 0) ? (-val) : (val)
+
+// --- Conditional Defines ---
+
 //#define _TRACE_
-//#define _IS_LESSER_							// Needed only for testing
+//#define _TRACE_CODE_FLOW_
+#define _IS_LESSER_						// Needed only for the testing purposes
+
+#if defined _TRACE_
+  #define TRACE_MSG_IF1(msg1)				TRACE_MSG1(msg1)
+  #define TRACE_MSG_IF2(msg1, msg2)			TRACE_MSG2(msg1, msg2)
+  #define TRACE_MSG_IF3(msg1, msg2, msg3)	TRACE_MSG3(msg1, msg2, msg3)
+#else
+  #define TRACE_MSG_IF1(msg)				;
+  #define TRACE_MSG_IF2(msg1, msg2)			;
+  #define TRACE_MSG_IF3(msg1, msg2, msg3)	;
+#endif
+
+#if defined _TRACE_CODE_FLOW_
+  #define TRACE_CODE_FLOW(msg)				TRACE_MSG2("Entering ", msg)
+#else
+  #define TRACE_CODE_FLOW(msg)				;
+#endif
 
 #if !defined _IS_LESSER_
 
-  #define longNum_MAX_SIZE_T_LENGTH				20u
-  #define longNum_MAX_SIZE_T_LENGTH_PLUS_ONE	21u
-  #define longNum_MAX_SIZE_T_ORDER				1e19
-  #define longNum_MAX_VALUE						size_t(-1)
+  constexpr size_t longNum_MAX_SIZE_T_LENGTH = 20u;
+  constexpr size_t longNum_MAX_SIZE_T_ORDER	 = static_cast<size_t>(1e19);
+  constexpr size_t longNum_MAX_VALUE		 = size_t(-1);
 
 #else
 
-  #pragma warning (disable:4244)
   #pragma warning (disable:4267)
-/*
-  #define longNum_MAX_SIZE_T_LENGTH				4u
-  #define longNum_MAX_SIZE_T_LENGTH_PLUS_ONE	5u
-  #define longNum_MAX_SIZE_T_ORDER				1e4
-  #define longNum_MAX_VALUE						1234		// max value x 2 should have the same number of digits (123 x 2 = 246 -- ok, 501 x 2 = 1002 -- fail!)
-*/
 
-  constexpr size_t longNum_MAX_SIZE_T_LENGTH			= 3u;
-  constexpr size_t longNum_MAX_SIZE_T_LENGTH_PLUS_ONE	= longNum_MAX_SIZE_T_LENGTH + 1u;
-  constexpr size_t longNum_MAX_SIZE_T_ORDER				= 1e3;
-  constexpr size_t longNum_MAX_VALUE					= 452;		// max value x 2 should have the same number of digits (123 x 2 = 246 -- ok, 501 x 2 = 1002 -- fail!)
-
+  constexpr size_t longNum_MAX_SIZE_T_LENGTH = 3u;
+  constexpr size_t longNum_MAX_SIZE_T_ORDER	 = static_cast<size_t>(1e3);
+  constexpr size_t longNum_MAX_VALUE		 = 452;		// max value x 2 should have the same number of digits
+														// (123 x 2 = 246 -- ok, 501 x 2 = 1002 -- fail!)
 #endif
 
 // -----------------------------------------------------------------------------------------------
@@ -59,6 +77,8 @@ void	testOperatorPlusTemplated();
 void	testOperatorPlusEquals();
 void	testOperatorPlusEqualsTemplated();
 void	testOperatorMinusEquals();
+void	testOperatorMinusEqualsTemplated();
+void	testOperatorPlusPlus();
 
 // -----------------------------------------------------------------------------------------------
 
@@ -142,6 +162,7 @@ class longNum {
 		// Other
 		void flipSign();
 		bool isMalformed() const;
+		void fill_maxSizeT();
 
 	private:
 		void convertToSizeT_ifPossible();															// Tries to store the number as size_t
@@ -177,6 +198,8 @@ class longNum {
 		bool		_sign;
 		size_t		_length;
 		digitType* _values;
+
+		static digitType maxSizeT[];
 };
 
 // -----------------------------------------------------------------------------------------------
