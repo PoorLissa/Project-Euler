@@ -28,7 +28,7 @@
 
 //#define _TRACE_
 //#define _TRACE_CODE_FLOW_
-#define _IS_LESSER_						// Needed only for the testing purposes
+//#define _IS_LESSER_						// Needed only for the testing purposes
 
 #if defined _TRACE_
   #define TRACE_MSG_IF1(msg1)				TRACE_MSG1(msg1)
@@ -79,6 +79,7 @@ void	testOperatorPlusEqualsTemplated();
 void	testOperatorMinusEquals();
 void	testOperatorMinusEqualsTemplated();
 void	testOperatorPlusPlus();
+void	testOperatorMinusMinus();
 
 // -----------------------------------------------------------------------------------------------
 
@@ -194,7 +195,7 @@ class longNum {
 		void opMinusEqual_4(longNum&, const longNum&) const;										// operator -= helper 4
 
 	private:
-		// Do NOT change order! All the constructors rely on the definition order
+		// Do NOT change the order! All the constructors rely on the definition order
 		bool		_sign;
 		size_t		_length;
 		digitType* _values;

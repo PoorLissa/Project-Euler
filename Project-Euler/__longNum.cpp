@@ -890,7 +890,8 @@ longNum& longNum::operator +=(const Type other)
 			_length -= cnt;
 
 			// Need to check if we can store the number as a size_t
-			convertToSizeT_ifPossible();
+			if (_length <= longNum_MAX_SIZE_T_LENGTH)
+				convertToSizeT_ifPossible();
 		}
 	}
 	else
@@ -1179,7 +1180,8 @@ void longNum::opPlusEqual_1(longNum& n1, const longNum& n2) const
 			n1._length = pn1->_length - cnt;				// Adjust the length, so leading zeroes will be trimmed out
 
 			// Value has reduced...
-			n1.convertToSizeT_ifPossible();
+			if (n1._length <= longNum_MAX_SIZE_T_LENGTH)
+				n1.convertToSizeT_ifPossible();
 		}
 	}
 #endif
@@ -1270,7 +1272,8 @@ void longNum::opPlusEqual_2(longNum &n1, const longNum &n2, const size_t n2_leng
 		n1._length -= cnt;
 
 		// Need to check if we can store the number as a size_t
-		n1.convertToSizeT_ifPossible();
+		if (n1._length <= longNum_MAX_SIZE_T_LENGTH)
+			n1.convertToSizeT_ifPossible();
 	}
 
 	return;
@@ -1355,7 +1358,8 @@ void longNum::opPlusEqual_3(longNum& n1, const longNum& n2, const size_t n1_leng
 		n1._sign = n2._sign;
 
 		// Need to check if we can store the number as a size_t
-		n1.convertToSizeT_ifPossible();
+		if (n1._length <= longNum_MAX_SIZE_T_LENGTH)
+			n1.convertToSizeT_ifPossible();
 	}
 
 	return;
@@ -1925,7 +1929,8 @@ void longNum::opMinusEqual_1(longNum& n1, const longNum& n2) const
 			n1._length = pn1->_length - cnt;
 
 			// Value has reduced...
-			n1.convertToSizeT_ifPossible();
+			if (n1._length <= longNum_MAX_SIZE_T_LENGTH)
+				n1.convertToSizeT_ifPossible();
 		}
 	}
 	else
@@ -2021,7 +2026,8 @@ void longNum::opMinusEqual_2(longNum& n1, const longNum& n2, const size_t n2_len
 		n1._length -= cnt;
 
 		// Need to check if we can store the number as a size_t
-		n1.convertToSizeT_ifPossible();
+		if (n1._length <= longNum_MAX_SIZE_T_LENGTH)
+			n1.convertToSizeT_ifPossible();
 	}
 	else
 	{
@@ -2112,7 +2118,8 @@ void longNum::opMinusEqual_3(longNum& n1, const longNum& n2, const size_t n1_len
 		n1._sign = !n2._sign;
 
 		// Need to check if we can store the number as a size_t
-		n1.convertToSizeT_ifPossible();
+		if (n1._length <= longNum_MAX_SIZE_T_LENGTH)
+			n1.convertToSizeT_ifPossible();
 	}
 	else
 	{
@@ -2272,85 +2279,120 @@ void longNum::opMinusEqual_4(longNum& n1, const longNum& n2) const
 
 // -----------------------------------------------------------------------------------------------
 
-// pmv tested/optimized until here < --- (not further down the code)
-
-// TODO: indexing to pointers
-
-// This implementation is almost 2 times faster than standard "return *this += longNum(1l)"
+// This implementation is about 2 times faster than standard "return *this += longNum(1)"
 longNum& longNum::operator ++()
 {
 	TRACE_CODE_FLOW("longNum::operator ++()");
 
 	if (_values)
 	{
+		digitType* digit(_values);
+
 		if (_sign)
 		{
 			// [] + 1
 
-			if (_values[0] != 9)
+			// It is the same as within the for-loop, but without the cycle -- should be a bit faster
+			if (*digit != BASE - 1)
 			{
-				// It is the same as within the for-loop, but without the cycle -- should be a bit faster
-				_values[0];
+				++(*digit);
 				return *this;
 			}
-			else
-			{
-				_values[0] = 0;
 
-				for (size_t i = 1; i < _length; ++i)
+			if (_values[1] != BASE - 1)
+			{
+				*digit++ = 0;
+				++(*digit);
+				return *this;
+			}
+
+			if (_values[2] != BASE - 1)
+			{
+				*digit++ = 0;
+				*digit++ = 0;
+				++(*digit);
+				return *this;
+			}
+
+			{
+				*digit++ = 0;
+				*digit++ = 0;
+				*digit++ = 0;
+
+				for (size_t i = 3u; i < _length; ++i)
 				{
-					if (_values[i] != 9)
+					if (*digit != BASE - 1)
 					{
-						_values[i];
+						++(*digit);
 						return *this;
 					}
 
-					_values[i] = 0;
+					*digit++ = 0;
 				}
 
 				TRACE_MSG_IF3("Alloc for ", _length + 1, " digits (operator++)");
 
-				// In case we reached this point, the array is full of '9's
+				// In case we reached this point, the array is full of '0's
 				// Will need to realloc: 999 + 1 = 1000
 				delete[] _values;
 
-				_values = new digitType[_length + 1];
+				_values = new digitType[_length + 1u];
 				memset(_values, 0, _length * sizeof(_values[0]));
 				_values[_length] = 1;
-				_length++;
+				++_length;
 			}
 		}
 		else
 		{
 			// [] - 1
 
-			if (_values[0] != 0)
+			// It is the same as within the for-loop, but without the cycle -- should be a bit faster
+			if (*digit != 0)
 			{
-				_values[0]--;
+				--(*digit);
+
+				// Need to check if we can store the number as a size_t
+				if (_length == longNum_MAX_SIZE_T_LENGTH)
+					convertToSizeT_ifPossible();
+
+				return *this;
 			}
-			else
+
+			if (_values[1] != 0)
 			{
-				_values[0] = 9;
+				*digit++ = BASE - 1;
+				--(*digit);
+				return *this;
+			}
 
-				for (size_t i = 1; i < _length; ++i)
+			if (_values[2] != 0)
+			{
+				*digit++ = BASE - 1;
+				*digit++ = BASE - 1;
+				--(*digit);
+				return *this;
+			}
+
+			{
+				*digit++ = BASE - 1;
+				*digit++ = BASE - 1;
+				*digit++ = BASE - 1;
+
+				for (size_t i = 3u; i < _length; ++i)
 				{
-					if (_values[i] != 0)
+					if (*digit != 0)
 					{
-						_values[i]--;
+						--(*digit);
 
-						if (_values[i] == 0 && i == _length - 1)
-							_length--;
+						if (*digit == 0 && (i + 1u) == _length)
+							--_length;
 
 						return *this;
 					}
 
-					_values[i] = 9;
+					*digit++ = BASE - 1;
 				}
 			}
-
-			// Need to check if we can store the number as a size_t
-			if (_length == longNum_MAX_SIZE_T_LENGTH)
-				convertToSizeT_ifPossible();
 		}
 	}
 	else
@@ -2386,7 +2428,8 @@ longNum& longNum::operator ++()
 		else
 		{
 			// size_t - 1
-			_sign = --_length == 0u ? POS : _sign;
+
+			_sign = !--_length ? POS : _sign;
 		}
 	}
 
@@ -2395,93 +2438,161 @@ longNum& longNum::operator ++()
 
 // -----------------------------------------------------------------------------------------------
 
+// pmv tested/optimized until here < --- (not further down the code)
+
 longNum& longNum::operator --()
 {
 	TRACE_CODE_FLOW("longNum::operator --()");
 
-	if (_length)
+	if (_values)
 	{
-		// General case
+		digitType* digit(_values);
+
 		if (_sign)
 		{
-			if (_values[0] != 0)
+			// It is the same as within the for-loop, but without the cycle -- should be a bit faster
+			if (*digit != 0)
 			{
-				_values[0]--;
+				--(*digit);
+
+				// Need to check if we can store the number as a size_t
+				if (_length == longNum_MAX_SIZE_T_LENGTH)
+					convertToSizeT_ifPossible();
+
+				return *this;
 			}
-			else
+
+			if (_values[1] != 0)
 			{
-				if (_length > 1)
-				{
-					_values[0] = 9;
+				*digit++ = BASE - 1;
+				--(*digit);
+				return *this;
+			}
 
-					for (size_t i = 1; i < _length; ++i)
+			if (_values[2] != 0)
+			{
+				*digit++ = BASE - 1;
+				*digit++ = BASE - 1;
+				--(*digit);
+				return *this;
+			}
+
+			{
+				*digit++ = BASE - 1;
+				*digit++ = BASE - 1;
+				*digit++ = BASE - 1;
+
+				for (size_t i = 3u; i < _length; ++i)
+				{
+					if (*digit != 0)
 					{
-						if (_values[i] != 0)
-						{
-							_values[i]--;
+						--(*digit);
 
-							if (_values[i] == 0 && i == _length - 1)
-								_length--;
+						if (*digit == 0 && (i + 1u) == _length)
+							--_length;
 
-							return *this;
-						}
-
-						_values[i] = 9;
+						return *this;
 					}
-				}
-				else
-				{
-					_sign = NEG;
-					_values[0] = 1;
+
+					*digit++ = BASE - 1;
 				}
 			}
 		}
 		else
 		{
-			if (_values[0] != 9)
-			{
-				_values[0]++;
-			}
-			else
-			{
-				_values[0] = 0;
+			// [] + 1
 
-				for (size_t i = 1; i < _length; ++i)
+			// It is the same as within the for-loop, but without the cycle -- should be a bit faster
+			if (*digit != BASE - 1)
+			{
+				++(*digit);
+				return *this;
+			}
+
+			if (_values[1] != BASE - 1)
+			{
+				*digit++ = 0;
+				++(*digit);
+				return *this;
+			}
+
+			if (_values[2] != BASE - 1)
+			{
+				*digit++ = 0;
+				*digit++ = 0;
+				++(*digit);
+				return *this;
+			}
+
+			{
+				*digit++ = 0;
+				*digit++ = 0;
+				*digit++ = 0;
+
+				for (size_t i = 3u; i < _length; ++i)
 				{
-					if (_values[i] != 9)
+					if (*digit != BASE - 1)
 					{
-						_values[i]++;
+						++(*digit);
 						return *this;
 					}
 
-					_values[i] = 0;
+					*digit++ = 0;
 				}
 
 				TRACE_MSG_IF3("Alloc for ", _length + 1, " digits (operator--)");
 
-				// In case we reached this point, the array is full of '9's
+				// In case we reached this point, the array is full of '0's
 				// Will need to realloc: 999 + 1 = 1000
 				delete[] _values;
 
-				_values = new digitType[_length + 1];
+				_values = new digitType[_length + 1u];
 				memset(_values, 0, _length * sizeof(_values[0]));
 				_values[_length] = 1;
-				_length++;
+				++_length;
 			}
 		}
 	}
 	else
 	{
-		// Deep zero state. Will return 1
-		TRACE_MSG_IF1("Alloc for zero");
+		if (_sign)
+		{
+			// size_t - 1
 
-		if (_values)
-			delete[] _values;
+			if (_length--)
+				return *this;
 
-		_values = new digitType[1];
-		_values[0] = 1;
-		_length = 1;
-		_sign = NEG;
+			_length = 1u;
+			_sign = NEG;
+		}
+		else
+		{
+			// size_t + 1
+
+			_length++;
+
+#if defined _IS_LESSER_
+			// Imitate overflow:
+			if (_length > longNum_MAX_VALUE)
+				_length = 0u;
+
+			fill_maxSizeT();
+#endif
+
+			if (!_length)
+			{
+				// Overflow. Allocate the array
+				TRACE_MSG_IF3("Alloc for ", longNum_MAX_SIZE_T_LENGTH, " digits (operator--)");
+
+				_values = new digitType[longNum_MAX_SIZE_T_LENGTH];
+				_length = longNum_MAX_SIZE_T_LENGTH;
+
+				for (size_t i = 0; i < longNum_MAX_SIZE_T_LENGTH; ++i)
+					_values[i] = maxSizeT[i];
+
+				_values[0]++;
+			}
+		}
 	}
 
 	return *this;
@@ -2499,6 +2610,8 @@ longNum::operator bool() const
 // -----------------------------------------------------------------------------------------------
 
 // Return number as a string in a normal readable order
+// TODO: test reserve vs resize.
+// also, mb for size_t part just reserve 21 symbol (or make it optional: longNum::get(bool doReserveExactLength = true))
 std::string longNum::get() const
 {
 	TRACE_CODE_FLOW("longNum::get()");
@@ -3060,7 +3173,8 @@ bool longNum::subtr2positive_1(const longNum& n1, const longNum& n2, longNum& re
 	res._sign = pn1->_sign;						// Sign is determined by the greater number
 	res._length -= cnt;							// Adjust the length, so leading zeroes will be trimmed out
 
-	res.convertToSizeT_ifPossible();
+	if (res._length <= longNum_MAX_SIZE_T_LENGTH)
+		res.convertToSizeT_ifPossible();
 
 	return bRes;
 }
@@ -3130,7 +3244,8 @@ bool longNum::subtr2positive_3(const longNum& n1, const size_t n2, longNum& res)
 	res._sign = n1._sign;					// Sign is determined by the greater number
 
 	// Need to check if we can store the number as a size_t
-	res.convertToSizeT_ifPossible();
+	if (res._length <= longNum_MAX_SIZE_T_LENGTH)
+		res.convertToSizeT_ifPossible();
 
 	return false;
 }
@@ -3191,7 +3306,8 @@ bool longNum::subtr2positive(const longNum& n1, const Type n2, longNum& res) con
 		res._sign = n1._sign;					// Sign is determined by the greater number
 
 		// Need to check if we can store the number as a size_t
-		res.convertToSizeT_ifPossible();
+		if (res._length <= longNum_MAX_SIZE_T_LENGTH)
+			res.convertToSizeT_ifPossible();
 
 		return false;
 	}
@@ -3250,6 +3366,7 @@ int longNum::absValueIsLarger(const longNum& n1, const longNum& n2) const
 
 // Tries to store the number as size_t
 // Pre-condition: _values is allocated, _length is holding the actual length, not value
+// _length MUST be <= longNum_MAX_SIZE_T_LENGTH!
 void longNum::convertToSizeT_ifPossible()
 {
 	TRACE_CODE_FLOW("longNum::convertToSizeT_ifPossible()");
@@ -3264,38 +3381,35 @@ void longNum::convertToSizeT_ifPossible()
 
 #endif
 
-	if (_length <= longNum_MAX_SIZE_T_LENGTH)
+	size_t i(_length);
+
+	if (_length == longNum_MAX_SIZE_T_LENGTH)
 	{
-		size_t i(_length);
-
-		if (_length == longNum_MAX_SIZE_T_LENGTH)
+		// Check if the number is larger than max allowed size
+		while (i--)
 		{
-			// Check if the number is larger than max allowed size
-			while (i--)
-			{
-				if (_values[i] < maxSizeT[i])
-					break;
+			if (_values[i] < maxSizeT[i])
+				break;
 
-				if (_values[i] > maxSizeT[i])
-					return;
-			}
-
-			i = _length;
+			if (_values[i] > maxSizeT[i])
+				return;
 		}
 
-		_length = 0u;
-
-		while (i--)
-			_length = _length * BASE + _values[i];
-
-		delete[] _values;
-		_values = nullptr;
-
-		if (!_length)
-			_sign = POS;
-
-		TRACE_MSG_IF2("longNum converted to size_t: ", _length);
+		i = _length;
 	}
+
+	_length = 0u;
+
+	while (i--)
+		_length = _length * BASE + _values[i];
+
+	delete[] _values;
+	_values = nullptr;
+
+	if (!_length)
+		_sign = POS;
+
+	TRACE_MSG_IF2("longNum converted to size_t: ", _length);
 
 	return;
 }
@@ -3342,10 +3456,17 @@ bool longNum::isMalformed() const
 {
 	TRACE_CODE_FLOW("longNum::isMalformed()");
 
+#if defined _IS_LESSER_
+
 	if (_values && as_size_t() <= longNum_MAX_VALUE)
 		return true;
 
 	if (!_values && as_size_t() > longNum_MAX_VALUE)
+		return true;
+
+#endif
+
+	if (_values && _length < longNum_MAX_SIZE_T_LENGTH)
 		return true;
 
 	if(_length == 0 && _sign != POS)
@@ -3393,29 +3514,14 @@ void longNum::fill_maxSizeT()
 
 int testLesser(const long N)
 {
-#if 0
-	longNum n1("1111111111111111111111111111111111111111111111");
-	longNum n2("22222222222222222222222222222222");
-
-	std::cout << n1.get() << std::endl;
-	n1 += n2;
-	std::cout << n1.get() << std::endl;
-	return 1;
-#endif
-
-#if 0
-	longNum n1(long(-451));
-	longNum n2(long(-452));
-
-	n1 -= n2;
-	std::cout << n1.get() << std::endl;
-
-	std::cout << -451 - (-452) << std::endl;
-
-	return 1;
-#endif
-
 	if (1)
+	{
+		testOperatorMinusMinus();
+		return 0;
+	}
+
+
+	if (0)
 	{
 		testOperatorPlusPlus();
 		return 0;
@@ -4666,11 +4772,13 @@ void testOperatorPlusPlus()
 		return;
 	}
 
+	// [] to []
 	if (1)
 	{
-		longNum n("999999999123709551615");
+		longNum n("-998446744073709551717");
 
-		// 14.531
+		// n > 0: 16.011 -- 15.150
+		// n < 0: 17.535 -- 16.245
 		for (size_t i = 0; i < 9999999999; ++i)
 		{
 			++n;
@@ -4682,7 +4790,49 @@ void testOperatorPlusPlus()
 	return;
 }
 
+void testOperatorMinusMinus()
+{
+#if 0
+
+	longNum nnn(size_t(-3));
+	nnn.flipSign();
+
+	for (int i = 0; i < 6; i++)
+	{
+		std::cout << nnn.get();
+		--nnn;
+		std::cout << " ---> " << nnn.get() << std::endl;
+	}
+
+	return;
+
+#endif
+
+	if (1)
+	{
+		//longNum nn(-1);
+		longNum nn("998446744073709551717");
+
+		// 
+		for (size_t i = 0; i < 9999999999; ++i)
+		{
+			--nn;
+		}
+
+		return;
+
+		longNum n(4999999999);
+
+		// 
+		for (size_t i = 0; i < 9999999999; ++i)
+		{
+			--n;
+		}
+
+		return;
+	}
+}
+
 void aaa()
 {
-
 }
