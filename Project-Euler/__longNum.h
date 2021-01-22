@@ -69,7 +69,6 @@ constexpr bool NEG = false;
 
 // -----------------------------------------------------------------------------------------------
 
-void	aaa();
 int		testLesser(const long);
 void	testOperatorMinus();
 void	testOperatorMinusTemplated();
@@ -80,6 +79,7 @@ void	testOperatorMinusEquals();
 void	testOperatorMinusEqualsTemplated();
 void	testOperatorPlusPlus();
 void	testOperatorMinusMinus();
+void	testGet();
 
 // -----------------------------------------------------------------------------------------------
 
