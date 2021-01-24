@@ -3326,6 +3326,52 @@ bool longNum::subtr2positive(const longNum& n1, const Type n2, longNum& res) con
 
 // -----------------------------------------------------------------------------------------------
 
+int longNum::absValueIsLarger222(const longNum &n1, const longNum &n2) const
+{
+	static int ratio = sizeof(long long) / sizeof(digitType);
+
+	if (n1._length == n2._length)
+	{
+		long long* n1digitLong = reinterpret_cast<long long*>(n1._values + n1._length);
+		long long* n2digitLong = reinterpret_cast<long long*>(n2._values + n1._length);
+
+		int bbb = n1._length % ratio;
+
+		for (size_t i = 0; i < n1._length / ratio; ++i)
+		{
+			n1digitLong--;
+			n2digitLong--;
+
+			if (*n1digitLong != *n2digitLong)
+				return (*n1digitLong > *n2digitLong) ? 1 : 2;
+		}
+
+		if (bbb)
+		{
+			digitType* n1digit(n1._values + bbb);
+			digitType* n2digit(n2._values + bbb);
+
+			for (int i = 0; i < bbb; ++i)
+			{
+				n1digit--;
+				n2digit--;
+
+//				std::cout << " | " << *n1digit << " vs " << *n2digit;
+
+				if (*n1digit != *n2digit)
+					return (*n1digit > *n2digit) ? 1 : 2;
+			}
+		}
+
+		return 0;
+	}
+
+	if (n1._length > n2._length)
+		return 1;
+
+	return 3;
+}
+
 // pmv tested/optimized until here < --- (not further down the code)
 
 // Operator > for absolute values of 2 longNum([]) numbers
@@ -3339,7 +3385,6 @@ int longNum::absValueIsLarger(const longNum& n1, const longNum& n2) const
 	TRACE_CODE_FLOW("longNum::absValueIsLarger()");
 
 #if 1
-
 
 	if (n1._length == n2._length)
 	{
@@ -4954,6 +4999,53 @@ void testGet()
 
 void testAbsValueIsLarger()
 {
+#if 0
+	short int arr1[] = { 1, 2, 3, 4, 5, 6 }; // ==> 654321
+	short int arr2[] = { 1, 2, 3, 4, 5, 6 }; // ==> 654322
+
+	std::cout << sizeof(short int) << std::endl;
+	std::cout << sizeof(	  int) << std::endl;
+	std::cout << sizeof(long long) << std::endl;
+
+	short int* ptr1 = arr2;
+		  int* ptr2 = reinterpret_cast<int*>(arr2);
+	long long *ptr3 = reinterpret_cast<long long*>(arr2);
+
+	std::cout << *ptr1 << std::endl;
+	std::cout << *ptr2 << std::endl;
+	std::cout << *ptr3 << std::endl;
+	
+	return;
+#endif
+
+	{
+		// real: n1 > n0
+		longNum
+			n0("51111111111122222222222233333333333344444444444555555555555556666666666666667777777777778888888888889999999999000000000000328576012847564366550834651234"),
+			n1("51111111111122222222222233333333333344444444444555555555555556666666666666667777777777778888888888889999999999000000000000328576012847564366550834651235");
+
+//		std::cout << "\n res1 = " << n0.abs(n1) << std::endl;
+//		return;
+
+		size_t res = 0;
+
+		// 28.31 -- 6.943
+
+		// 899999997
+		for (size_t i = 0; i < 299999999; ++i)
+		{
+			n0.getValues()[1] = 6;
+			n1.getValues()[1] = 6;
+
+			res += n0.abs(n1);
+			res += n1.abs(n0);
+		}
+
+		std::cout << " res = " << res << std::endl;
+
+		return;
+	}
+
 	// 1499999995
 
 #if 0

@@ -97,9 +97,15 @@ class longNum {
 
 	public:
 
+		int absValueIsLarger222(const longNum&, const longNum&) const;
+
 		int abs(const longNum& other)
 		{
+#if 1
+			return absValueIsLarger222(*this, other);
+#else
 			return absValueIsLarger(*this, other);
+#endif
 		}
 
 		longNum() : _values(nullptr), _length(0), _sign(POS) { ; }
