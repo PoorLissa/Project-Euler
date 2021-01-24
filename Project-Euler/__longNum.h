@@ -80,6 +80,7 @@ void	testOperatorMinusEqualsTemplated();
 void	testOperatorPlusPlus();
 void	testOperatorMinusMinus();
 void	testGet();
+void	testAbsValueIsLarger();
 
 // -----------------------------------------------------------------------------------------------
 
@@ -95,6 +96,11 @@ class longNum {
 		static const digitType BASE = 10;
 
 	public:
+
+		int abs(const longNum& other)
+		{
+			return absValueIsLarger(*this, other);
+		}
 
 		longNum() : _values(nullptr), _length(0), _sign(POS) { ; }
 	   ~longNum();
