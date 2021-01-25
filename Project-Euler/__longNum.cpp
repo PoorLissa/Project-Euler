@@ -61,8 +61,8 @@ longNum::longNum(const char* str) : _values(nullptr), _length(strlen(str)), _sig
 
 				for (size_t i = 1; i < longNum_MAX_SIZE_T_LENGTH; ++i)
 				{
-					digit1 = *STR++ - 48;
-					digit2--;												// max size_t digit
+					digit1 = *STR++ - 48;	// our digit
+					digit2--;				// max size_t digit
 
 					if (digit1 != *digit2)
 					{
@@ -275,13 +275,38 @@ longNum& longNum::operator =(longNum&& other) noexcept
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: check if we can do this faster without creating another longNum object
 template <class Type>
 longNum& longNum::operator =(const Type other)
 {
 	TRACE_CODE_FLOW("longNum::operator =(const Type)");
 
-	return *this = longNum(other);
+	if (_values)
+	{
+		delete[] _values;
+		_values = nullptr;
+	}
+
+	_sign = (other >= 0);
+	_length = _sign ? other : -other;
+
+	return *this;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+template <>
+longNum& longNum::operator =(const char *str)
+{
+	TRACE_CODE_FLOW("longNum::operator =(const char *)");
+
+	// TODO: this will work, be it can be done without realloc if str length is the same
+	if (_values)
+	{
+		delete[] _values;
+		_values = nullptr;
+	}
+
+	return *this = longNum(str);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -295,11 +320,7 @@ bool longNum::operator ==(const longNum& other) const
 		if (_length == other._length && _sign == other._sign)
 		{
 			if (_values)
-			{
-				for (size_t i = 0; i < _length; ++i)
-					if (_values[i] != other._values[i])
-						return false;
-			}
+				return (absValueIsLarger(*this, other) == 0);
 
 			return true;
 		}
@@ -5010,6 +5031,36 @@ void testConvertToSizeT_ifPossible()
 
 void testConstructor()
 {
+	longNum n1("18446744073709551619");
+	longNum n2("18446744073709551619");
+
+	longNum n3("184467440737095516191");
+	longNum n4("18446744073709551619");
+
+	longNum n5("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+	longNum n6("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+
+	longNum n7("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346501");
+	longNum n8("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+
+	// 63.675 -- 29.963
+	for (size_t i = 0; i < 999999999; ++i)
+	{
+		if (n1 != n2)
+			std::cout << " fail1";
+
+		if (n3 == n4)
+			std::cout << " fail2";
+
+		if (n5 != n6)
+			std::cout << " fail3";
+
+		if (n7 == n8)
+			std::cout << " fail3";
+	}
+
+	return;
+
 #if 0
 	longNum n1("18446744073709551616");
 	std::cout << n1.get() << std::endl;
