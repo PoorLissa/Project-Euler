@@ -18,6 +18,23 @@ longNum::digitType longNum::maxSizeT[] = { 5, 1, 6, 1, 5, 5, 9, 0, 7, 3, 7, 0, 4
 // TODO: try to make it a bit faster
 longNum::longNum(const char* str) : _values(nullptr), _length(strlen(str)), _sign(POS)
 {
+	auto doTheAlloc = [&](size_t len) -> void
+	{
+		digitType* data = new digitType[len], * digit(data + len);
+
+		TRACE_MSG_IF2("Alloc Constructor(const char*) : ", str);
+
+		for (size_t i(0u); i < len; ++i)
+		{
+			--digit;
+			*digit = digitType(str[i] - 48);
+		}
+
+		_values = data;
+	};
+
+	// ----------------------------------------------------------------------------
+
 	TRACE_CODE_FLOW("longNum::longNum(const char *)");
 
 	// Get sign and skip first symbol
@@ -31,70 +48,49 @@ longNum::longNum(const char* str) : _values(nullptr), _length(strlen(str)), _sig
 			--_length;
 			++str;
 		}
-	}
 
-	if (_length >= longNum_MAX_SIZE_T_LENGTH)
-	{
-		digitType* data(nullptr);
-
-		// Still might be less than size_t(-1)
-		if (_length == longNum_MAX_SIZE_T_LENGTH)
+		if (_length >= longNum_MAX_SIZE_T_LENGTH)
 		{
-			size_t tmp = static_cast<size_t>(longNum_MAX_SIZE_T_ORDER);
-			const char* STR = str;
+			// Still might be less than size_t(-1)
+			static const char ch = char(maxSizeT[longNum_MAX_SIZE_T_LENGTH - 1] + 48);
 
-			while (tmp)
+			if (_length == longNum_MAX_SIZE_T_LENGTH && str[0] <= ch)
 			{
-				size_t digit1 = static_cast<size_t>(STR++[0]) - 48;		// our number
-				size_t digit2 = (longNum_MAX_VALUE / tmp) % BASE;		// max size_t number
+				const char* STR = str + 1;
+				digitType digit1, *digit2 = &maxSizeT[longNum_MAX_SIZE_T_LENGTH-1];
 
-				if (digit1 > digit2)
+				for (size_t i = 1; i < longNum_MAX_SIZE_T_LENGTH; ++i)
 				{
-					data = new digitType[_length];
-					break;
-				}
+					digit1 = *STR++ - 48;
+					digit2--;												// max size_t digit
 
-				if (digit1 < digit2)
-				{
-					break;
-				}
+					if (digit1 != *digit2)
+					{
+						if (digit1 > *digit2)
+							doTheAlloc(longNum_MAX_SIZE_T_LENGTH);
 
-				tmp /= BASE;
+						break;
+					}
+				}
+			}
+			else
+			{
+				doTheAlloc(_length);
 			}
 		}
-		else
+
+		// Less than size_t(-1), store the number as size_t
+		if (!_values)
 		{
-			data = new digitType[_length];
+			TRACE_MSG_IF2("Constructor(const char*) -- store as size_t: ", str);
+
+			size_t num(0u);
+
+			for (size_t i(0u); i < _length; i++)
+				num = num * BASE + static_cast<size_t>(str[i]) - 48u;
+
+			_length = num;
 		}
-
-		// More than size_t(-1), store the number as array
-		if (data)
-		{
-			TRACE_MSG_IF2("Alloc Constructor(const char*) : ", str);
-
-			digitType* digit(data + _length);
-
-			for (size_t i = 0; i < _length; ++i)
-			{
-				--digit;
-				*digit = digitType(str[i] - 48);
-			}
-
-			_values = data;
-		}
-	}
-
-	// Less than size_t(-1), store the number as size_t
-	if (!_values)
-	{
-		TRACE_MSG_IF2("Constructor(const char*) -- store as size_t: ", str);
-
-		size_t tmp(0u);
-
-		for (size_t i = 0; i < _length; i++)
-			tmp = tmp * BASE + static_cast<size_t>(str[i]) - 48;
-
-		_length = tmp;
 	}
 }
 
@@ -3411,6 +3407,21 @@ void longNum::convertToSizeT_ifPossible()
 
 #endif
 
+	auto doTheCalc = [&](size_t i) -> void
+	{
+		size_t len(0u);
+
+		while (i--)
+			len = len * BASE + _values[i];
+
+		delete[] _values;
+		_values = nullptr;
+		_length = len;
+		_sign = len ? _sign : POS;
+
+		TRACE_MSG_IF2("longNum converted to size_t: ", len);
+	};
+
 	if (_length == longNum_MAX_SIZE_T_LENGTH)
 	{
 		if (_values[longNum_MAX_SIZE_T_LENGTH-1] > maxSizeT[longNum_MAX_SIZE_T_LENGTH-1])
@@ -3433,32 +3444,11 @@ void longNum::convertToSizeT_ifPossible()
 				return;
 		}
 
-		size_t i(longNum_MAX_SIZE_T_LENGTH), len(0u);
-
-		while (i--)
-			len = len * BASE + _values[i];
-
-		delete[] _values;
-		_values = nullptr;
-		_length = len;
-		_sign = len ? _sign : POS;
-
-		TRACE_MSG_IF2("longNum converted to size_t: ", len);
-
+		doTheCalc(longNum_MAX_SIZE_T_LENGTH);
 		return;
 	}
 
-	size_t i(_length), len(0u);
-
-	while (i--)
-		len = len * BASE + _values[i];
-
-	delete[] _values;
-	_values = nullptr;
-	_length = len;
-	_sign = len ? _sign : POS;
-
-	TRACE_MSG_IF2("longNum converted to size_t: ", len);
+	doTheCalc(_length);
 
 	return;
 }
@@ -3567,8 +3557,8 @@ int testLesser(const long N)
 {
 #if !defined _IS_LESSER_
 
-	runTest(0, testConstructor);
-	runTest(1, testConvertToSizeT_ifPossible);
+	runTest(1, testConstructor);
+	runTest(0, testConvertToSizeT_ifPossible);
 	runTest(0, testGet);
 	runTest(0, testOperatorMinusMinus);
 	runTest(0, testOperatorPlusPlus);
@@ -5034,12 +5024,24 @@ void testConstructor()
 	return;
 #endif
 
-	const char* str = "+511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502";
+	const char* str1 = "+511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502";
+	const char* str2 = "18446744073709551619";
+	const char* str3 = "18446744073709551613";
+	const char* str4 = "38446744073709551613";
+	const char* str5 = "1844674407370955161";
 
-	// 31.811 -- 28.479 -- 25.474
-	for (size_t i = 1; i < 199999999; ++i)
+//	longNum nnn1("18446744073709551619");
+//	return;
+
+	// nnn1,	199999999	:: 31.811 -- 28.479 -- 25.474 -- 25.3 -- 25.156
+	// nnn1-4,	99999999	:: 47.435 -- 47.173 -- 46.7 -- 25.97 -- 25.462 -- 24.906 -- 24.8
+	for (size_t i = 1; i < 99999999; ++i)
 	{
-		longNum nnn(str);
+		longNum nnn1(str1);
+		longNum nnn2(str2);
+		longNum nnn3(str3);
+		longNum nnn4(str4);
+		longNum nnn5(str5);
 	}
 }
 
