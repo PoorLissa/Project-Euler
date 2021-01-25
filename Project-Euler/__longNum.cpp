@@ -3433,8 +3433,7 @@ void longNum::convertToSizeT_ifPossible()
 				return;
 		}
 
-/*
-		size_t i(longNum_MAX_SIZE_T_LENGTH), len(0);
+		size_t i(longNum_MAX_SIZE_T_LENGTH), len(0u);
 
 		while (i--)
 			len = len * BASE + _values[i];
@@ -3447,10 +3446,9 @@ void longNum::convertToSizeT_ifPossible()
 		TRACE_MSG_IF2("longNum converted to size_t: ", len);
 
 		return;
-*/
 	}
 
-	size_t i(_length), len(0);
+	size_t i(_length), len(0u);
 
 	while (i--)
 		len = len * BASE + _values[i];
