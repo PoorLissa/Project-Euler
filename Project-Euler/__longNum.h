@@ -81,6 +81,8 @@ void	testOperatorPlusPlus();
 void	testOperatorMinusMinus();
 void	testGet();
 void	testAbsValueIsLarger();
+void	testConvertToSizeT_ifPossible();
+void	testConstructor();
 
 // -----------------------------------------------------------------------------------------------
 
@@ -97,15 +99,9 @@ class longNum {
 
 	public:
 
-		int absValueIsLarger222(const longNum&, const longNum&) const;
-
-		int abs(const longNum& other)
+		void aaa()
 		{
-#if 1
-			return absValueIsLarger222(*this, other);
-#else
-			return absValueIsLarger(*this, other);
-#endif
+			convertToSizeT_ifPossible();
 		}
 
 		longNum() : _values(nullptr), _length(0), _sign(POS) { ; }

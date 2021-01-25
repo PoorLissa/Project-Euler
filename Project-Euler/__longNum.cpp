@@ -12,9 +12,6 @@ longNum::digitType longNum::maxSizeT[] = { 5, 1, 6, 1, 5, 5, 9, 0, 7, 3, 7, 0, 4
 
 // TODO: check all cases of using values[i] and replace with *digit
 
-// TODO: 		if (n1._length <= longNum_MAX_SIZE_T_LENGTH)
-//					n1.convertToSizeT_ifPossible();
-
 // Main Class Contents
 #if 1
 
@@ -31,13 +28,15 @@ longNum::longNum(const char* str) : _values(nullptr), _length(strlen(str)), _sig
 			if (str[0] == '-')
 				_sign = NEG;
 
-			_length--;
-			str++;
+			--_length;
+			++str;
 		}
 	}
 
 	if (_length >= longNum_MAX_SIZE_T_LENGTH)
 	{
+		digitType* data(nullptr);
+
 		// Still might be less than size_t(-1)
 		if (_length == longNum_MAX_SIZE_T_LENGTH)
 		{
@@ -51,7 +50,7 @@ longNum::longNum(const char* str) : _values(nullptr), _length(strlen(str)), _sig
 
 				if (digit1 > digit2)
 				{
-					_values = new digitType[_length];
+					data = new digitType[_length];
 					break;
 				}
 
@@ -65,16 +64,23 @@ longNum::longNum(const char* str) : _values(nullptr), _length(strlen(str)), _sig
 		}
 		else
 		{
-			_values = new digitType[_length];
+			data = new digitType[_length];
 		}
 
 		// More than size_t(-1), store the number as array
-		if (_values)
+		if (data)
 		{
 			TRACE_MSG_IF2("Alloc Constructor(const char*) : ", str);
 
-			for (size_t i = 0; i < _length; i++)
-				_values[_length - i - 1] = str[i] - 48;
+			digitType* digit(data + _length);
+
+			for (size_t i = 0; i < _length; ++i)
+			{
+				--digit;
+				*digit = digitType(str[i] - 48);
+			}
+
+			_values = data;
 		}
 	}
 
@@ -3119,7 +3125,7 @@ bool longNum::subtr2positive_1(const longNum& n1, const longNum& n2, longNum& re
 		cnt = *digit++ ? 0 : cnt + 1u;
 	}
 
-	for (; carryOver && i < pn1->_length; ++i)
+	for (; (carryOver || cnt) && i < pn1->_length; ++i)
 	{
 		*digit -= carryOver;
 
@@ -3189,7 +3195,7 @@ bool longNum::subtr2positive_3(const longNum& n1, const size_t n2, longNum& res)
 		cnt = *digit++ ? 0 : cnt + 1u;
 	}
 
-	for (; carryOver && i < n1._length; ++i)
+	for (; (carryOver || cnt) && i < n1._length; ++i)
 	{
 		*digit -= carryOver;
 
@@ -3326,16 +3332,31 @@ bool longNum::subtr2positive(const longNum& n1, const Type n2, longNum& res) con
 
 // -----------------------------------------------------------------------------------------------
 
-int longNum::absValueIsLarger222(const longNum &n1, const longNum &n2) const
+// Operator > for absolute values of 2 longNum([]) numbers
+// Returns:
+// n1  > n2	-- 1
+// n1  < n2	-- 2	-- n2.length = n1.length
+// n1  < n2	-- 3	-- n2.length > n1.length
+// n1 == n2	-- 0
+//
+// Let the array be digitType arr[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+// The number it represents is 987654321
+// We're going to reintepret groups of digits as larger type and compare thoses larger type numbers
+// sizeof(short)	  = 2
+// sizeof(long long ) = 8
+// Therefore, we'll be able to compare 8/2 = 4-digit chunks at a time
+// The first chunk will be '9876', the second will be '5432', and so on
+// This effectively speeds up the process up to 4 times
+int longNum::absValueIsLarger(const longNum& n1, const longNum& n2) const
 {
-	static int ratio = sizeof(long long) / sizeof(digitType);
+	TRACE_CODE_FLOW("longNum::absValueIsLarger()");
+
+	static size_t ratio = sizeof(long long) / sizeof(digitType);
 
 	if (n1._length == n2._length)
 	{
 		long long* n1digitLong = reinterpret_cast<long long*>(n1._values + n1._length);
 		long long* n2digitLong = reinterpret_cast<long long*>(n2._values + n1._length);
-
-		int bbb = n1._length % ratio;
 
 		for (size_t i = 0; i < n1._length / ratio; ++i)
 		{
@@ -3346,23 +3367,22 @@ int longNum::absValueIsLarger222(const longNum &n1, const longNum &n2) const
 				return (*n1digitLong > *n2digitLong) ? 1 : 2;
 		}
 
-		if (bbb)
+		if (n1._length % ratio)
 		{
-			digitType* n1digit(n1._values + bbb);
-			digitType* n2digit(n2._values + bbb);
+			digitType* n1digit(n1._values + n1._length % ratio);
+			digitType* n2digit(n2._values + n1._length % ratio);
 
-			for (int i = 0; i < bbb; ++i)
+			for (int i = 0; i < n1._length % ratio; ++i)
 			{
 				n1digit--;
 				n2digit--;
-
-//				std::cout << " | " << *n1digit << " vs " << *n2digit;
 
 				if (*n1digit != *n2digit)
 					return (*n1digit > *n2digit) ? 1 : 2;
 			}
 		}
 
+		// At this point we know the 2 numbers are equal
 		return 0;
 	}
 
@@ -3370,105 +3390,6 @@ int longNum::absValueIsLarger222(const longNum &n1, const longNum &n2) const
 		return 1;
 
 	return 3;
-}
-
-// pmv tested/optimized until here < --- (not further down the code)
-
-// Operator > for absolute values of 2 longNum([]) numbers
-// Returns:
-// n1  > n2	-- 1
-// n1  < n2	-- 2	-- n2.length = n1.length
-// n1  < n2	-- 3	-- n2.length > n1.length
-// n1 == n2	-- 0
-int longNum::absValueIsLarger(const longNum& n1, const longNum& n2) const
-{
-	TRACE_CODE_FLOW("longNum::absValueIsLarger()");
-
-#if 1
-
-	if (n1._length == n2._length)
-	{
-		digitType* n1digit(n1._values + n1._length);
-		digitType* n2digit(n2._values + n1._length);
-
-		for (size_t i = 0; i < n1._length; ++i)
-		{
-			n1digit--;
-			n2digit--;
-
-			//std::cout << " " << *n1digit;
-
-			if (*n1digit != *n2digit)
-				return (*n1digit > *n2digit) ? 1 : 2;
-		}
-
-		return 0;
-	}
-
-	if (n1._length > n2._length)
-		return 1;
-
-	return 3;
-
-
-#else
-
-
-	if (n1._length > n2._length)
-		return 1;
-
-	if (n1._length < n2._length)
-		return 3;
-
-	// Now we know the lengths are the same
-	if (n1._length)
-	{
-#if 1
-
-		digitType* n1digit(n1._values + n1._length);
-		digitType* n2digit(n2._values + n1._length);
-
-		//while (len--)
-		for (size_t i = 0; i < n1._length; ++i)
-		{
-			n1digit--;
-			n2digit--;
-
-			//std::cout << " " << *n1digit;
-
-			if (*n1digit != *n2digit)
-			{
-				return *n1digit > *n2digit ? 1 : 2;
-
-				if (*n1digit > *n2digit)
-					return 1;
-
-				if (*n1digit < *n2digit)
-					return 2;
-			}
-		}
-
-#else
-
-		for (size_t i = n1._length - 1; i != size_t(-1); --i)
-		{
-			// TODO: test if [asd = n1._values[i] - n2._values[i]]
-			// and then checking its sign and value is faster
-			if (n1._values[i] > n2._values[i])
-				return 1;
-
-			if (n1._values[i] < n2._values[i])
-				return 2;
-		}
-
-#endif
-	}
-
-	// At this point we know the 2 numbers are equal
-	return 0;
-
-
-#endif
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -3490,35 +3411,56 @@ void longNum::convertToSizeT_ifPossible()
 
 #endif
 
-	size_t i(_length);
-
 	if (_length == longNum_MAX_SIZE_T_LENGTH)
 	{
-		// Check if the number is larger than max allowed size
-		while (i--)
+		if (_values[longNum_MAX_SIZE_T_LENGTH-1] > maxSizeT[longNum_MAX_SIZE_T_LENGTH-1])
+			return;
+
+		static size_t shortLen = longNum_MAX_SIZE_T_LENGTH / (sizeof(long long) / sizeof(digitType));
+
+		long long* n1digitLong = reinterpret_cast<long long*>( _values + longNum_MAX_SIZE_T_LENGTH);
+		long long* n2digitLong = reinterpret_cast<long long*>(maxSizeT + longNum_MAX_SIZE_T_LENGTH);
+
+		for (size_t i = 0; i < shortLen; ++i)
 		{
-			if (_values[i] < maxSizeT[i])
+			n1digitLong--;
+			n2digitLong--;
+
+			if (*n1digitLong < *n2digitLong)
 				break;
 
-			if (_values[i] > maxSizeT[i])
+			if (*n1digitLong > *n2digitLong)
 				return;
 		}
 
-		i = _length;
+/*
+		size_t i(longNum_MAX_SIZE_T_LENGTH), len(0);
+
+		while (i--)
+			len = len * BASE + _values[i];
+
+		delete[] _values;
+		_values = nullptr;
+		_length = len;
+		_sign = len ? _sign : POS;
+
+		TRACE_MSG_IF2("longNum converted to size_t: ", len);
+
+		return;
+*/
 	}
 
-	_length = 0u;
+	size_t i(_length), len(0);
 
 	while (i--)
-		_length = _length * BASE + _values[i];
+		len = len * BASE + _values[i];
 
 	delete[] _values;
 	_values = nullptr;
+	_length = len;
+	_sign = len ? _sign : POS;
 
-	if (!_length)
-		_sign = POS;
-
-	TRACE_MSG_IF2("longNum converted to size_t: ", _length);
+	TRACE_MSG_IF2("longNum converted to size_t: ", len);
 
 	return;
 }
@@ -3627,6 +3569,8 @@ int testLesser(const long N)
 {
 #if !defined _IS_LESSER_
 
+	runTest(0, testConstructor);
+	runTest(1, testConvertToSizeT_ifPossible);
 	runTest(0, testGet);
 	runTest(0, testOperatorMinusMinus);
 	runTest(0, testOperatorPlusPlus);
@@ -3636,7 +3580,7 @@ int testLesser(const long N)
 	runTest(0, testOperatorMinus);
 	runTest(0, testOperatorMinusTemplated);
 	runTest(0, testOperatorPlusTemplated);
-	runTest(1, testAbsValueIsLarger);
+	runTest(0, testAbsValueIsLarger);
 
 #endif
 
@@ -4029,7 +3973,7 @@ int testLesser(const long N)
 
 				if (n3 != i - j)
 				{
-					std::cout << " -- ERROR 1 in operator - : " << i << " - " << j << std::endl;
+					std::cout << " -- ERROR 1 in operator - : " << i << " - " << j << " ::: Expected " << (i - j) << ", got " << n3.get() << std::endl;
 					return 1;
 				}
 
@@ -5000,54 +4944,6 @@ void testGet()
 void testAbsValueIsLarger()
 {
 #if 0
-	short int arr1[] = { 1, 2, 3, 4, 5, 6 }; // ==> 654321
-	short int arr2[] = { 1, 2, 3, 4, 5, 6 }; // ==> 654322
-
-	std::cout << sizeof(short int) << std::endl;
-	std::cout << sizeof(	  int) << std::endl;
-	std::cout << sizeof(long long) << std::endl;
-
-	short int* ptr1 = arr2;
-		  int* ptr2 = reinterpret_cast<int*>(arr2);
-	long long *ptr3 = reinterpret_cast<long long*>(arr2);
-
-	std::cout << *ptr1 << std::endl;
-	std::cout << *ptr2 << std::endl;
-	std::cout << *ptr3 << std::endl;
-	
-	return;
-#endif
-
-	{
-		// real: n1 > n0
-		longNum
-			n0("51111111111122222222222233333333333344444444444555555555555556666666666666667777777777778888888888889999999999000000000000328576012847564366550834651234"),
-			n1("51111111111122222222222233333333333344444444444555555555555556666666666666667777777777778888888888889999999999000000000000328576012847564366550834651235");
-
-//		std::cout << "\n res1 = " << n0.abs(n1) << std::endl;
-//		return;
-
-		size_t res = 0;
-
-		// 28.31 -- 6.943
-
-		// 899999997
-		for (size_t i = 0; i < 299999999; ++i)
-		{
-			n0.getValues()[1] = 6;
-			n1.getValues()[1] = 6;
-
-			res += n0.abs(n1);
-			res += n1.abs(n0);
-		}
-
-		std::cout << " res = " << res << std::endl;
-
-		return;
-	}
-
-	// 1499999995
-
 #if 0
 	longNum nn1("18446744083709551615");
 	longNum nn2("18446744083709551615");
@@ -5069,12 +4965,13 @@ void testAbsValueIsLarger()
 	size_t res = 0;
 
 	// 36.25 -- 29.69
+	// 41.5 -- 8.3
 	for (size_t i = 0; i < 299999999; ++i)
 	{
 		size_t len = n0.getLength();
 
-		n0.getValues()[0] = 6;
-		n1.getValues()[0] = 6;
+		n0.getValues()[1] = 6;
+		n1.getValues()[1] = 6;
 
 		res += n0.abs(n1);
 
@@ -5089,8 +4986,63 @@ void testAbsValueIsLarger()
 	}
 
 	std::cout << res << std::endl;
+#endif
 }
 
+void testConvertToSizeT_ifPossible()
+{
+	longNum res, n1("18446744073709551616"), n2("38446744073709551616"), n3("78446744073709551616");
 
+/*
+	res = n1;
+	res.getValues()[0] = 3;
+	res.aaa();
+	std::cout << res.get() << std::endl;
+	return;
+*/
+
+	// 46.128 -- 36.15
+	// 26.571 -- 24.7
+	//for (size_t i = 1; i < 999999999; ++i)
+	for (size_t i = 1; i < 599999999; ++i)
+	{
+		res = n1;
+		res.getValues()[0] = 3;
+		res.aaa();
+
+		res = n2;
+		res.getValues()[0] = 3;
+		res.aaa();
+
+		res = n3;
+		res.getValues()[0] = 3;
+		res.aaa();
+	}
+}
+
+void testConstructor()
+{
+#if 0
+	longNum n1("18446744073709551616");
+	std::cout << n1.get() << std::endl;
+
+	if (n1 == "18446744073709551616")
+	{
+		std::cout << std::endl;
+		std::cout << "-= OK =-" << std::endl;
+		std::cout << std::endl;
+	}
+
+	return;
+#endif
+
+	const char* str = "+511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502";
+
+	// 31.811 -- 28.479 -- 25.474
+	for (size_t i = 1; i < 199999999; ++i)
+	{
+		longNum nnn(str);
+	}
+}
 
 
