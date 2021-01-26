@@ -15,7 +15,6 @@ longNum::digitType longNum::maxSizeT[] = { 5, 1, 6, 1, 5, 5, 9, 0, 7, 3, 7, 0, 4
 // Main Class Contents
 #if 1
 
-// TODO: try to make it a bit faster
 longNum::longNum(const char* str) : _values(nullptr), _length(strlen(str)), _sign(POS)
 {
 	auto doTheAlloc = [&](size_t len) -> void
@@ -757,13 +756,12 @@ longNum longNum::operator +(const Type other) const
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: make this work
 template <>
 longNum longNum::operator +(const char* str) const
 {
 	TRACE_CODE_FLOW("longNum::operator +(const char *)");
 
-	return longNum(0);
+	return std::move(*this + longNum(str));
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -836,7 +834,6 @@ longNum& longNum::operator +=(longNum&& other) noexcept
 
 // []	  += Type
 // size_t += Type
-// optimized
 template <class Type>
 longNum& longNum::operator +=(const Type other)
 {
@@ -5091,8 +5088,48 @@ void testConvertToSizeT_ifPossible()
 
 void testConstructor()
 {
+	{
+		const size_t len = 1024u;
+
+		//for (volatile size_t i = 1; i < 999999999; ++i)
+		for (volatile size_t i = 1; i < 59999999; ++i)
+		{
+#if 0
+			// 27.59
+			short* ptr = new short[len];
+
+			for (int i = 0; i < len; ++i)
+				ptr[i] = i;
+
+			delete[] ptr;
+#else
+
+			// 27.3
+			short * buffer = (short *)malloc(len * sizeof(short));
+
+			for (int i = 0; i < len; ++i)
+				buffer[i] = i;
+
+			free(buffer);
+#endif
+		}
+
+		return;
+	}
+
+
+
+
+
+
+
 	longNum n1(-1);
 	longNum n2(+1);
+
+	n2 = n1 + "123";
+
+	std::cout << n2.get();
+	return;
 	longNum n3(+2);
 	longNum n4("18446744073709551619");
 	longNum n5("184467440737095516193");
