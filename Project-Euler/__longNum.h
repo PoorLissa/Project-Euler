@@ -94,7 +94,7 @@ void	testConstructor();
 
 class longNum {
 
-		typedef short digitType;
+		typedef short digitType;				// If digitType becomes 1 byte type, convertToSizeT_ifPossible() will fail
 		static const digitType BASE = 10;
 
 	public:
@@ -209,6 +209,7 @@ class longNum {
 		digitType* _values;
 
 		static digitType maxSizeT[];
+		static constexpr size_t ratio_ll_to_digitType = sizeof(long long) / sizeof(digitType);
 };
 
 // -----------------------------------------------------------------------------------------------

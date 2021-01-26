@@ -280,6 +280,12 @@ longNum& longNum::operator =(const Type other)
 {
 	TRACE_CODE_FLOW("longNum::operator =(const Type)");
 
+#if defined _IS_LESSER_
+
+	*this = longNum(other);
+
+#else
+
 	if (_values)
 	{
 		delete[] _values;
@@ -288,6 +294,8 @@ longNum& longNum::operator =(const Type other)
 
 	_sign = (other >= 0);
 	_length = _sign ? other : -other;
+
+#endif
 
 	return *this;
 }
@@ -320,7 +328,39 @@ bool longNum::operator ==(const longNum& other) const
 		if (_length == other._length && _sign == other._sign)
 		{
 			if (_values)
+			{
+#if 1
+				// Somehow this works a bit faster
 				return (absValueIsLarger(*this, other) == 0);
+#else
+				long long* n1digitLong = reinterpret_cast<long long*>(		_values + _length);
+				long long* n2digitLong = reinterpret_cast<long long*>(other._values + _length);
+
+				for (size_t i = 0; i < _length / ratio_ll_to_digitType; ++i)
+				{
+					n1digitLong--;
+					n2digitLong--;
+
+					if (*n1digitLong != *n2digitLong)
+						return false;
+				}
+
+				if (_length % ratio_ll_to_digitType)
+				{
+					digitType* n1digit(		 _values + _length % ratio_ll_to_digitType);
+					digitType* n2digit(other._values + _length % ratio_ll_to_digitType);
+
+					for (int i = 0; i < _length % ratio_ll_to_digitType; ++i)
+					{
+						n1digit--;
+						n2digit--;
+
+						if (*n1digit != *n2digit)
+							return false;
+					}
+				}
+#endif
+			}
 
 			return true;
 		}
@@ -345,7 +385,6 @@ bool longNum::operator ==(const Type other) const
 
 #endif
 
-	// TODO: doesnt work with size_t somehow. Check this later
 	if (_values || _sign != (other >= 0))
 		return false;
 
@@ -354,13 +393,13 @@ bool longNum::operator ==(const Type other) const
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: make this work
 template <>
 bool longNum::operator ==(const char *str) const
 {
 	TRACE_CODE_FLOW("longNum::operator ==(const char *)");
 
-	return true;
+	// TODO: make this work without constructor
+	return *this == longNum(str);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -384,34 +423,35 @@ bool longNum::operator !=(const Type other) const
 
 // -----------------------------------------------------------------------------------------------
 
+template <>
+bool longNum::operator !=(const char* str) const
+{
+	TRACE_CODE_FLOW("longNum::operator !=(const char *)");
+
+	// TODO: make this work without constructor
+	return *this != longNum(str);
+}
+
+// -----------------------------------------------------------------------------------------------
+
 bool longNum::operator >(const longNum& other) const
 {
 	TRACE_CODE_FLOW("longNum::operator >(const longNum &)");
 
-	if (_sign > other._sign)
-		return true;
-
-	if (_sign < other._sign)
-		return false;
+	if (_sign != other._sign)
+		return _sign > other._sign;
 
 	if (bool(_values) == bool(other._values))
 	{
-		if (_length > other._length)
-			return _sign;
-
-		if (_length < other._length)
-			return !_sign;
+		if (_length != other._length)
+			return (_length > other._length) ? _sign : !_sign;
 
 		if (_values && _length)
 		{
-			for (size_t i = _length - 1; i != size_t(-1); --i)
-			{
-				if (_values[i] > other._values[i])
-					return _sign;
+			int isGreater = absValueIsLarger(*this, other);
 
-				if (_values[i] < other._values[i])
-					return !_sign;
-			}
+			if (isGreater)
+				return isGreater < 2 ? _sign : !_sign;
 		}
 
 		return false;
@@ -450,13 +490,13 @@ bool longNum::operator >(const Type other) const
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: make this work
 template <>
 bool longNum::operator >(const char* str) const
 {
 	TRACE_CODE_FLOW("longNum::operator >(const char *)");
 
-	return true;
+	// TODO: optimize later
+	return *this > longNum(str);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -465,30 +505,20 @@ bool longNum::operator >=(const longNum& other) const
 {
 	TRACE_CODE_FLOW("longNum::operator >=(const longNum &)");
 
-	if (_sign > other._sign)
-		return true;
-
-	if (_sign < other._sign)
-		return false;
+	if (_sign != other._sign)
+		return _sign > other._sign;
 
 	if (bool(_values) == bool(other._values))
 	{
-		if (_length > other._length)
-			return _sign;
-
-		if (_length < other._length)
-			return !_sign;
+		if (_length != other._length)
+			return (_length > other._length) ? _sign : !_sign;
 
 		if (_values && _length)
 		{
-			for (size_t i = _length - 1; i != size_t(-1); --i)
-			{
-				if (_values[i] > other._values[i])
-					return _sign;
+			int isGreater = absValueIsLarger(*this, other);
 
-				if (_values[i] < other._values[i])
-					return !_sign;
-			}
+			if (isGreater)
+				return isGreater < 2 ? _sign : !_sign;
 		}
 
 		return true;
@@ -527,13 +557,13 @@ bool longNum::operator >=(const Type other) const
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: make this work
 template <>
 bool longNum::operator >=(const char* str) const
 {
 	TRACE_CODE_FLOW("longNum::operator >=(const char *)");
 
-	return true;
+	// TODO: optimize later
+	return *this >= longNum(str);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -542,30 +572,20 @@ bool longNum::operator <(const longNum& other) const
 {
 	TRACE_CODE_FLOW("longNum::operator <(const longNum &)");
 
-	if (_sign < other._sign)
-		return true;
-
-	if (_sign > other._sign)
-		return false;
+	if (_sign != other._sign)
+		return _sign < other._sign;
 
 	if (bool(_values) == bool(other._values))
 	{
-		if (_length < other._length)
-			return _sign;
-
-		if (_length > other._length)
-			return !_sign;
+		if (_length != other._length)
+			return (_length < other._length) ? _sign : !_sign;
 
 		if (_values && _length)
 		{
-			for (size_t i = _length - 1; i != size_t(-1); --i)
-			{
-				if (_values[i] < other._values[i])
-					return _sign;
+			int isGreater = absValueIsLarger(*this, other);
 
-				if (_values[i] > other._values[i])
-					return !_sign;
-			}
+			if (isGreater)
+				return isGreater > 1 ? _sign : !_sign;
 		}
 
 		return false;
@@ -604,13 +624,13 @@ bool longNum::operator <(const Type other) const
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: make this work
 template <>
 bool longNum::operator <(const char* str) const
 {
 	TRACE_CODE_FLOW("longNum::operator <(const char *)");
 
-	return true;
+	// TODO: optimize later
+	return *this < longNum(str);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -619,30 +639,20 @@ bool longNum::operator <=(const longNum& other) const
 {
 	TRACE_CODE_FLOW("longNum::operator <=(const longNum &)");
 
-	if (_sign < other._sign)
-		return true;
-
-	if (_sign > other._sign)
-		return false;
+	if (_sign != other._sign)
+		return _sign < other._sign;
 
 	if (bool(_values) == bool(other._values))
 	{
-		if (_length < other._length)
-			return _sign;
-
-		if (_length > other._length)
-			return !_sign;
+		if (_length != other._length)
+			return (_length < other._length) ? _sign : !_sign;
 
 		if (_values && _length)
 		{
-			for (size_t i = _length - 1; i != size_t(-1); --i)
-			{
-				if (_values[i] < other._values[i])
-					return _sign;
+			int isGreater = absValueIsLarger(*this, other);
 
-				if (_values[i] > other._values[i])
-					return !_sign;
-			}
+			if (isGreater)
+				return isGreater > 1 ? _sign : !_sign;
 		}
 
 		return true;
@@ -681,13 +691,13 @@ bool longNum::operator <=(const Type other) const
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: make this work
 template <>
 bool longNum::operator <=(const char* str) const
 {
 	TRACE_CODE_FLOW("longNum::operator <=(const char *)");
 
-	return true;
+	// TODO: optimize later
+	return *this <= longNum(str);
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -3368,14 +3378,12 @@ int longNum::absValueIsLarger(const longNum& n1, const longNum& n2) const
 {
 	TRACE_CODE_FLOW("longNum::absValueIsLarger()");
 
-	static size_t ratio = sizeof(long long) / sizeof(digitType);
-
 	if (n1._length == n2._length)
 	{
 		long long* n1digitLong = reinterpret_cast<long long*>(n1._values + n1._length);
 		long long* n2digitLong = reinterpret_cast<long long*>(n2._values + n1._length);
 
-		for (size_t i = 0; i < n1._length / ratio; ++i)
+		for (size_t i = 0; i < n1._length / ratio_ll_to_digitType; ++i)
 		{
 			n1digitLong--;
 			n2digitLong--;
@@ -3384,12 +3392,12 @@ int longNum::absValueIsLarger(const longNum& n1, const longNum& n2) const
 				return (*n1digitLong > *n2digitLong) ? 1 : 2;
 		}
 
-		if (n1._length % ratio)
+		if (n1._length % ratio_ll_to_digitType)
 		{
-			digitType* n1digit(n1._values + n1._length % ratio);
-			digitType* n2digit(n2._values + n1._length % ratio);
+			digitType* n1digit(n1._values + n1._length % ratio_ll_to_digitType);
+			digitType* n2digit(n2._values + n1._length % ratio_ll_to_digitType);
 
-			for (int i = 0; i < n1._length % ratio; ++i)
+			for (int i = 0; i < n1._length % ratio_ll_to_digitType; ++i)
 			{
 				n1digit--;
 				n2digit--;
@@ -3448,7 +3456,7 @@ void longNum::convertToSizeT_ifPossible()
 		if (_values[longNum_MAX_SIZE_T_LENGTH-1] > maxSizeT[longNum_MAX_SIZE_T_LENGTH-1])
 			return;
 
-		static size_t shortLen = longNum_MAX_SIZE_T_LENGTH / (sizeof(long long) / sizeof(digitType));
+		static size_t shortLen = longNum_MAX_SIZE_T_LENGTH / ratio_ll_to_digitType;
 
 		long long* n1digitLong = reinterpret_cast<long long*>( _values + longNum_MAX_SIZE_T_LENGTH);
 		long long* n2digitLong = reinterpret_cast<long long*>(maxSizeT + longNum_MAX_SIZE_T_LENGTH);
@@ -3464,6 +3472,29 @@ void longNum::convertToSizeT_ifPossible()
 			if (*n1digitLong > *n2digitLong)
 				return;
 		}
+
+#if defined _IS_LESSER_
+
+		static size_t shortLenRemainder = longNum_MAX_SIZE_T_LENGTH % ratio_ll_to_digitType;
+
+		if (shortLenRemainder)
+		{
+			digitType* n1digit(	_values + shortLenRemainder);
+			digitType* n2digit(maxSizeT + shortLenRemainder);
+
+			for (int i = 0; i < shortLenRemainder; ++i)
+			{
+				n1digit--;
+				n2digit--;
+
+				if (*n1digit < *n2digit)
+					break;
+
+				if (*n1digit > *n2digit)
+					return;
+			}
+		}
+#endif
 
 		doTheCalc(longNum_MAX_SIZE_T_LENGTH);
 		return;
@@ -3592,6 +3623,35 @@ int testLesser(const long N)
 	runTest(0, testAbsValueIsLarger);
 
 #endif
+
+	// zzz
+
+	if(0)
+	{
+		// ERROR 4 in operator - : malformed longNum : -3333 - -2880
+
+		long l1 = -3333;
+		long l2 = -2380;
+
+		longNum n1(l1), n2(l2);
+
+		longNum asdasd = n1 - n2;
+
+		std::cout << asdasd.get() << std::endl;
+
+		std::cout << l1 - l2 << std::endl;
+
+		if( asdasd.getValues())
+			std::cout << "has values" << std::endl;
+
+		if (asdasd.isMalformed())
+			std::cout << "is malformed" << std::endl;
+
+		return 0;
+
+	}
+
+
 
 	int percentage = 0;
 	long maxValNeg = long(-longNum_MAX_VALUE);
@@ -5031,33 +5091,35 @@ void testConvertToSizeT_ifPossible()
 
 void testConstructor()
 {
-	longNum n1("18446744073709551619");
-	longNum n2("18446744073709551619");
-
-	longNum n3("184467440737095516191");
+	longNum n1(-1);
+	longNum n2(+1);
+	longNum n3(+2);
 	longNum n4("18446744073709551619");
+	longNum n5("184467440737095516193");
+	longNum n6("184467440737095516197");
 
-	longNum n5("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
-	longNum n6("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+	longNum n7("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+	longNum n8("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346503");
 
-	longNum n7("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346501");
-	longNum n8("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+	size_t bbb(0);
 
-	// 63.675 -- 29.963
-	for (size_t i = 0; i < 999999999; ++i)
+	// 34.358 -- 
+	for (volatile size_t i = 1; i < 199999999; ++i)
 	{
-		if (n1 != n2)
-			std::cout << " fail1";
+		bbb += n1 <= n2;
+		bbb += n2 <= n1;
 
-		if (n3 == n4)
-			std::cout << " fail2";
-
-		if (n5 != n6)
-			std::cout << " fail3";
-
-		if (n7 == n8)
-			std::cout << " fail3";
+		bbb += n2 <= n3;
+		bbb += n3 <= n2;
+		bbb += n4 <= n5;
+		bbb += n5 <= n4;
+		bbb += n5 <= n6;
+		bbb += n6 <= n5;
+		bbb += n7 <= n8;
+		bbb += n8 <= n7;
 	}
+
+	std::cout << bbb;
 
 	return;
 
