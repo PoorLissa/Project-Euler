@@ -853,23 +853,25 @@ longNum& longNum::operator +=(const Type other)
 			digitType carryOver(0);
 			digitType* digit(_values);
 
-			while (other)
+			while (*ptr && ++i)
 			{
-				*digit += other % BASE + carryOver;
+				Type div = *ptr / BASE;
+				digitType rem = *ptr % BASE;
 
-				*ptr /= BASE;
+				*digit += rem + carryOver;
+				*ptr = div;
 
 				carryOver = *digit >= BASE ? 1 : 0;
-				*digit++ = carryOver ? *digit - BASE : *digit;
-				++i;
+				*digit -= (carryOver) ? BASE : 0;
+				++digit;
 			}
 
-			for (; carryOver && i < _length; ++i)
+			for (; carryOver && i < _length; ++i, ++digit)
 			{
 				*digit += carryOver;
 
 				carryOver = *digit >= BASE ? 1 : 0;
-				*digit++ = carryOver ? *digit - BASE : *digit;
+				*digit = carryOver ? *digit - BASE : *digit;
 			}
 
 			// If carryOver > 0, we need to reallocate and normalize
@@ -896,25 +898,27 @@ longNum& longNum::operator +=(const Type other)
 			digitType carryOver(0);
 			digitType* digit(_values);
 
-			while (other)
+			while (*ptr && ++i)
 			{
-				*digit -= (other % BASE + carryOver);
+				Type div = *ptr / BASE;
+				digitType rem = *ptr % BASE;
 
-				*ptr /= BASE;
+				*digit -= (rem + carryOver);
+				*ptr = div;
 
 				carryOver = *digit >= 0 ? 0 : 1;
 				*digit += carryOver ? BASE : 0;
-				cnt = *digit++ ? 0 : cnt + 1u;
-				++i;
+				cnt = *digit ? 0 : cnt++;
+				++digit;
 			}
 
-			for (; (cnt || carryOver) && i < _length; ++i)
+			for (; (cnt || carryOver) && i < _length; ++i, ++digit)
 			{
 				*digit -= carryOver;
 
 				carryOver = *digit >= 0 ? 0 : 1;
 				*digit += carryOver ? BASE : 0;
-				cnt = *digit++ ? 0 : cnt + 1u;
+				cnt = *digit ? 0 : cnt++;
 			}
 
 			_length -= cnt;
@@ -935,56 +939,19 @@ longNum& longNum::operator +=(const Type other)
 			size_t length = _length + other;
 
 #if defined _IS_LESSER_
-
-			// Overflow: need to allocate memory
-			if (length > longNum_MAX_VALUE)
-			{
-				TRACE_MSG_IF1("Alloc (operator += <Type>)");
-
-				size_t MAX(longNum_MAX_VALUE), i(0u);
-				digitType carryOver(1);
-
-				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH], * digit(data);
-
-				// Imitate size_t overflow
-				length -= (longNum_MAX_VALUE + 1);
-
-				while (length)
-				{
-					*digit = MAX % BASE + length % BASE + carryOver;
-
-					length /= BASE;
-					MAX /= BASE;
-
-					carryOver = *digit >= BASE ? 1 : 0;
-					*digit++ = carryOver ? *digit - BASE : *digit;
-					++i;
-				}
-
-				while (MAX)
-				{
-					*digit = MAX % BASE + carryOver;
-
-					MAX /= BASE;
-
-					carryOver = *digit >= BASE ? 1 : 0;
-					*digit++ = carryOver ? *digit - BASE : *digit;
-					++i;
-				}
-
-				_length = i;
-				_values = data;
-			}
-			else
-			{
-				_length = length;
-			}
-
+  #define OVERFLOW_CONDITION	length > longNum_MAX_VALUE
+  #define IMITATE_OVERFLOW		length -= (longNum_MAX_VALUE + 1);
 #else
+  #define OVERFLOW_CONDITION	length < _length || length < other
+  #define IMITATE_OVERFLOW		;
+#endif
 
 			// Overflow: need to allocate memory
-			if (length < _length || length < other)
+			if (OVERFLOW_CONDITION)
 			{
+				// Imitate size_t overflow
+				IMITATE_OVERFLOW;
+
 				TRACE_MSG_IF1("Alloc (operator += <Type>)");
 
 				size_t MAX(longNum_MAX_VALUE), i(0u);
@@ -992,30 +959,31 @@ longNum& longNum::operator +=(const Type other)
 
 				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH], *digit(data);
 
-				while (length)
-				{
-					*digit = MAX % BASE + length % BASE + carryOver;
+				// Copy max size_t value into data, and then add in place
+				memcpy(data, maxSizeT, sizeof(digitType) * longNum_MAX_SIZE_T_LENGTH);
 
-					length /= BASE;
-					MAX /= BASE;
+				while (length && ++i)
+				{
+					size_t div = length / BASE;
+					digitType rem = length % BASE;
+
+					*digit += rem + carryOver;
+					length = div;
 
 					carryOver = *digit >= BASE ? 1 : 0;
-					*digit++ = carryOver ? *digit - BASE : *digit;
-					++i;
+					*digit -= (carryOver) ? BASE : 0;
+					++digit;
 				}
 
-				while (MAX)
+				for (; carryOver && i < longNum_MAX_SIZE_T_LENGTH; ++i, ++digit)
 				{
-					*digit = MAX % BASE + carryOver;
-
-					MAX /= BASE;
+					*digit += carryOver;
 
 					carryOver = *digit >= BASE ? 1 : 0;
-					*digit++ = carryOver ? *digit - BASE : *digit;
-					++i;
+					*digit -= (carryOver) ? BASE : 0;
 				}
 
-				_length = i;
+				_length = longNum_MAX_SIZE_T_LENGTH;
 				_values = data;
 			}
 			else
@@ -1023,7 +991,9 @@ longNum& longNum::operator +=(const Type other)
 				_length = length;
 			}
 
-#endif
+#undef OVERFLOW_CONDITION
+#undef IMITATE_OVERFLOW
+
 		}
 		else
 		{
@@ -5089,47 +5059,37 @@ void testConvertToSizeT_ifPossible()
 void testConstructor()
 {
 	{
-		const size_t len = 1024u;
 
-		//for (volatile size_t i = 1; i < 999999999; ++i)
-		for (volatile size_t i = 1; i < 59999999; ++i)
+		longNum nn0(size_t(-1));
+
+		longNum res;
+
+		// 18.541 -- 17.76 -- 17.6 -- 16.96
+		// 26.060 -- 24.43 -- 20.9 -- 20.6
+		// 25.600 -- 21.777
+		for (volatile size_t i = 1; i < 299999999; ++i)
 		{
-#if 0
-			// 27.59
-			short* ptr = new short[len];
+			longNum nn1(nn0);
+			nn1 += size_t(-10 * i);
 
-			for (int i = 0; i < len; ++i)
-				ptr[i] = i;
-
-			delete[] ptr;
-#else
-
-			// 27.3
-			short * buffer = (short *)malloc(len * sizeof(short));
-
-			for (int i = 0; i < len; ++i)
-				buffer[i] = i;
-
-			free(buffer);
-#endif
+			res += nn1;
 		}
+		
+		if (res != "11068046369988754678961793528")
+		{
+			std::cout << " FAIL!" << std::endl;
+			std::cout << std::endl;
+			std::cout << res.get() << std::endl;
+		}
+
 
 		return;
 	}
 
 
 
-
-
-
-
 	longNum n1(-1);
 	longNum n2(+1);
-
-	n2 = n1 + "123";
-
-	std::cout << n2.get();
-	return;
 	longNum n3(+2);
 	longNum n4("18446744073709551619");
 	longNum n5("184467440737095516193");

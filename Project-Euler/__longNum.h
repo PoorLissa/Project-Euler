@@ -18,9 +18,6 @@
 
 // --- Permanent Defines ---
 
-#define ALLOC(Type, Name, Size)			Type *Name = (Type *)malloc(Size * sizeof(Type));
-#define FREE(Name)						free(Name);
-
 #define TRACE_MSG1(msg1)				std::cout << " ---> " << msg1 << std::endl;
 #define TRACE_MSG2(msg1, msg2)			std::cout << " ---> " << msg1 << msg2 << std::endl;
 #define TRACE_MSG3(msg1, msg2, msg3)	std::cout << " ---> " << msg1 << msg2 << msg3 << std::endl;
