@@ -157,6 +157,14 @@ class longNum {
 		template <class Type> longNum	operator - (const Type) const;
 		template <class Type> longNum & operator -=(const Type);
 
+		// TODO: test later
+		longNum operator-()
+		{
+			longNum tmp(*this);
+			tmp.flipSign();
+			return std::move(tmp);
+		}
+
 		explicit operator bool() const;
 
 
@@ -172,6 +180,7 @@ class longNum {
 		void flipSign();
 		bool isMalformed() const;
 		void fill_maxSizeT();
+
 
 	private:
 		void convertToSizeT_ifPossible();															// Tries to store the number as size_t
@@ -201,6 +210,9 @@ class longNum {
 		void opMinusEqual_2(longNum&, const longNum&, const size_t) const;							// operator -= helper 2
 		void opMinusEqual_3(longNum&, const longNum&, const size_t) const;							// operator -= helper 3
 		void opMinusEqual_4(longNum&, const longNum&) const;										// operator -= helper 4
+
+		void realloc_And_Normalize(digitType, const char *);										// In case of overflow, reallocates values
+
 
 	private:
 		// Do NOT change the order! All the constructors rely on the definition order
