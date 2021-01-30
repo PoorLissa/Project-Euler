@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "stdafx.h"
 #include "__longNum.h"
 
 #include <map>
@@ -90,6 +91,47 @@ longNum::longNum(const char* str) : _values(nullptr), _length(strlen(str)), _sig
 
 			_length = num;
 		}
+	}
+}
+
+// -----------------------------------------------------------------------------------------------
+
+// Test constructor for base 100
+// Adding worked 2 times faster. So later, TODO: use large BASE!
+// Haven't figured out how to convert base 10 conat char * to arbitrary base, but converting to base 100 (1000, 10000) is pretty easy
+longNum::longNum(int base, const char* str) : _values(nullptr), _length(strlen(str)), _sign(POS)
+{
+	TRACE_CODE_FLOW("longNum::longNum(const char *)");
+
+	// Get sign and skip first symbol
+	if (_length)
+	{
+		digitType* data = new digitType[_length], * digit(data + _length);
+
+		TRACE_MSG_IF2("Alloc Constructor(const char*) : ", str);
+
+		digitType d(-1);
+		size_t len(0);
+
+		for (size_t i(_length); i > 0; --i)
+		{
+			if (d == -1)
+			{
+				d = digitType(str[i - 1] - 48);
+			}
+			else
+			{
+				d += 10 * digitType(str[i - 1] - 48);
+				data[len++] = d;
+				d = -1;
+			}
+		}
+
+		if (d != -1)
+			data[len++] = d;
+
+		_length = len;
+		_values = data;
 	}
 }
 
@@ -850,8 +892,7 @@ longNum& longNum::operator +=(const Type other)
 
 			// Perform adding in place
 			size_t i(0u);
-			digitType carryOver(0);
-			digitType* digit(_values);
+			digitType negBASE(-BASE), carryOver(0), *digit(_values);
 
 			while (*ptr && ++i)
 			{
@@ -862,7 +903,7 @@ longNum& longNum::operator +=(const Type other)
 				*ptr = div;
 
 				carryOver = *digit >= BASE ? 1 : 0;
-				*digit -= (carryOver) ? BASE : 0;
+				*digit += (carryOver) ? negBASE : 0;
 				++digit;
 			}
 
@@ -877,15 +918,7 @@ longNum& longNum::operator +=(const Type other)
 			// If carryOver > 0, we need to reallocate and normalize
 			if (carryOver)
 			{
-				TRACE_MSG_IF1("Alloc (operator += <Type>)");
-
-				digitType* data = new digitType[_length + 1u];
-
-				memcpy(data, _values, sizeof(digitType) * _length);
-				data[_length++] = carryOver;
-
-				delete[] _values;
-				_values = data;
+				realloc_And_Normalize(carryOver, "Alloc (operator += <Type>)");
 			}
 		}
 		else
@@ -895,8 +928,7 @@ longNum& longNum::operator +=(const Type other)
 
 			// Subtract numbers in place
 			size_t cnt(0u), i(0u);
-			digitType carryOver(0);
-			digitType* digit(_values);
+			digitType carryOver(0), *digit(_values);
 
 			while (*ptr && ++i)
 			{
@@ -954,8 +986,8 @@ longNum& longNum::operator +=(const Type other)
 
 				TRACE_MSG_IF1("Alloc (operator += <Type>)");
 
-				size_t MAX(longNum_MAX_VALUE), i(0u);
-				digitType carryOver(1);
+				size_t i(0u);
+				digitType negBASE(-BASE), carryOver(1);
 
 				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH], *digit(data);
 
@@ -971,7 +1003,7 @@ longNum& longNum::operator +=(const Type other)
 					length = div;
 
 					carryOver = *digit >= BASE ? 1 : 0;
-					*digit -= (carryOver) ? BASE : 0;
+					*digit -= carryOver ? BASE : 0;
 					++digit;
 				}
 
@@ -980,7 +1012,7 @@ longNum& longNum::operator +=(const Type other)
 					*digit += carryOver;
 
 					carryOver = *digit >= BASE ? 1 : 0;
-					*digit -= (carryOver) ? BASE : 0;
+					*digit -= carryOver ? BASE : 0;
 				}
 
 				_length = longNum_MAX_SIZE_T_LENGTH;
@@ -1108,7 +1140,7 @@ void longNum::opPlusEqual_1(longNum& n1, const longNum& n2) const
 				digitType* data = new digitType[len1], * digit(data);
 
 				// When one number is significantly shorter than the other, it is more efficient to memcpy and then subtract in place
-				// When the numbers are of relatively same length, it is faster to do one-by-one digit subtraction
+				// When the numbers are of relatively same length, it is faster to perform one-by-one digit subtract/copy
 				// Approx len1 to len2 ratio here is about 1.2, but it seems to be greater for the smaller numbers
 				// After doing a bit of testing, I desided to make it 1.33 for the smaller numbers, and 1.2 for the larger ones
 
@@ -1262,7 +1294,7 @@ void longNum::opPlusEqual_2(longNum &n1, const longNum &n2, const size_t n2_leng
 			carryOver = *digit >= 0 ? 0 : 1;
 			*digit += carryOver ? BASE : 0;
 			cnt = *digit++ ? 0 : ++cnt;
-			i++;
+			++i;
 		}
 
 		for (; (cnt || carryOver) && i < n1._length; ++i)
@@ -1286,8 +1318,9 @@ void longNum::opPlusEqual_2(longNum &n1, const longNum &n2, const size_t n2_leng
 
 // -----------------------------------------------------------------------------------------------
 
+// pmv
+
 // operator += helper 3 (size_t += [])
-// optimized
 void longNum::opPlusEqual_3(longNum& n1, const longNum& n2, const size_t n1_length) const
 {
 	TRACE_CODE_FLOW("longNum::opPlusEqual_3");
@@ -1301,35 +1334,72 @@ void longNum::opPlusEqual_3(longNum& n1, const longNum& n2, const size_t n1_leng
 
 	if (n1._sign == n2._sign)
 	{
-		n1._values = new digitType[n2._length + 1u];
-		digitType carryOver(0);
-		digitType* digit(n1._values);
+		digitType *data = new digitType[n2._length + 1u];
+		digitType carryOver(0), *digit(data);
 
-		while (*ptr)
+		if (n2._length > 25)
 		{
-			*digit = n2._values[i] + *ptr % BASE + carryOver;
+			memcpy(data, n2._values, sizeof(digitType) * n2._length);
 
-			*ptr /= BASE;
+			while (*ptr && ++i)
+			{
+				size_t div = *ptr / BASE;
 
-			carryOver = *digit >= BASE ? 1 : 0;
-			*digit++ = carryOver ? *digit - BASE : *digit;
-			++i;
+				*digit += *ptr % BASE + carryOver;
+				*ptr = div;
+
+				carryOver = *digit >= BASE ? 1 : 0;
+				*digit++ -= carryOver ? BASE : 0;
+			}
+
+			for (; carryOver && i < n2._length; ++i, ++digit)
+			{
+				*digit += carryOver;
+
+				carryOver = *digit >= BASE ? 1 : 0;
+				*digit -= carryOver ? BASE : 0;
+			}
+
+			n1._length = n2._length;
+			n1._values = data;
+
+			if (carryOver)
+			{
+				data[n1._length++] = carryOver;
+			}
 		}
-
-		for (; i < n2._length; ++i)
+		else
 		{
-			*digit = n2._values[i] + carryOver;
+			digitType* n2digit(n2._values);
 
-			carryOver = *digit >= BASE ? 1 : 0;
-			*digit++ = carryOver ? *digit - BASE : *digit;
+			while (*ptr && ++i)
+			{
+				size_t div = *ptr / BASE;
+
+				*digit = *n2digit++ + *ptr % BASE + carryOver;
+
+				*ptr = div;
+
+				carryOver = *digit >= BASE ? 1 : 0;
+				*digit++ -= carryOver ? BASE : 0;
+			}
+
+			for (; i < n2._length; ++i)
+			{
+				*digit = *n2digit++ + carryOver;
+
+				carryOver = *digit >= BASE ? 1 : 0;
+				*digit++ -= carryOver ? BASE : 0;
+			}
+
+			if (carryOver)
+			{
+				data[i++] = carryOver;
+			}
+
+			n1._length = i;
+			n1._values = data;
 		}
-
-		if (carryOver)
-		{
-			n1._values[i++] = carryOver;
-		}
-
-		n1._length = i;
 	}
 	else
 	{
@@ -2615,6 +2685,44 @@ longNum::operator bool() const
 // Returns number as a string in a normal readable order
 std::string longNum::get() const
 {
+/*
+	// Test version for BASE == 100
+	if (BASE == 100)
+	{
+		if (_values)
+		{
+			// Return value stored as array
+			digitType* digit(_values + _length - 1);
+			std::string str;
+
+			if (_sign)
+			{
+				str.resize(_length * 2);
+
+				size_t j = 0;
+
+				for (size_t i = 0u; i < _length; ++i)
+				{
+					digitType d = *digit--;
+
+					if (d >= 10)
+					{
+						str[j++] = static_cast<char>(d / 10 + 48);
+						str[j++] = static_cast<char>(d % 10 + 48);
+					}
+					else
+					{
+						str[j++] = '0';
+						str[j++] = static_cast<char>(d % 10 + 48);
+					}
+				}
+			}
+
+			return str;
+		}
+	}
+*/
+
 	TRACE_CODE_FLOW("longNum::get()");
 
 	if (_values)
@@ -2628,7 +2736,9 @@ std::string longNum::get() const
 			str.resize(_length);
 
 			for (size_t i = 0u; i < _length; ++i)
+			{
 				str[i] = static_cast<char>(*digit-- + 48);
+			}
 		}
 		else
 		{
@@ -5086,22 +5196,58 @@ void testConstructor()
 	longNum n6("184467440737095516197"); 
 	 
 	longNum n7("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
-	//longNum n8("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346503");
-
 	longNum n8("748132797979679574836262521637375810698705769593067698481139085987609549254532970695874873875449867");
 	longNum n9("279797967957483626252163737581069870576959306769848");
 
+	{
+		longNum res,
+			n0("748132797979679574836262521637375810698705769593067698481139085987609549254532970695874873875449867"),
+			n1("53285760128475643665508346502"),
+			n2("18446744073709551615"),
+			n3("1844674407370955161547");
+
+		long long minval = -(size_t(-1) / 2);
+		long long maxval = +(size_t(-1) / 2);
+
+		if (1)
+		{
+			size_t N = 499999999;
+
+			size_t n = 13;
+
+			for (volatile size_t i = 0; i < N; ++i)
+			{
+				longNum tmp(n2);
+
+				tmp += n7;
+//				res += tmp;
+//				n *= 37;
+			}
+
+			if(res.get() == "931560573859211205136335286838")
+				std::cout << " OK!!!" << std::endl;
+			else
+				std::cout << " FAIL!!!\n\n new res = " << res.get() << std::endl;
+
+			return;
+		}
+	}
+
 	size_t n = 13;
 
-	// 22.407
+	n8.flipSign();
+
+	longNum n10(size_t(-1));
+
+	// 22.143 -- 
 	for (volatile size_t i = 1; i < 699999999; ++i)
 	{
-		n8 += n;
-//		res += n8;
+		n10 += n;
+		res += n10;
 		n *= 37;
 	}
 	
-	if (res != "523692957089510106426024615473638024214342417317735849750661963229048514762585631242356207594950828552588851")
+	if (res != "2259631663177030551977083652484385355")
 	{
 		std::cout << std::endl;
 		std::cout << " -- FAIL --" << std::endl;

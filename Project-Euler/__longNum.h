@@ -28,7 +28,7 @@
 
 //#define _TRACE_
 //#define _TRACE_CODE_FLOW_
-//#define _IS_LESSER_						// Needed only for the testing purposes
+#define _IS_LESSER_						// Needed only for the testing purposes
 
 #if defined _TRACE_
   #define TRACE_MSG_IF1(msg1)				TRACE_MSG1(msg1)
@@ -110,6 +110,7 @@ class longNum {
 
 		// Constructors
 		longNum(const char *);
+		longNum(int, const char*);
 		longNum(const std::string& str) : longNum(str.c_str()) { ; }
 		longNum(const longNum  &);
 		longNum(	  longNum &&) noexcept;
