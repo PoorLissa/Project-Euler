@@ -180,6 +180,8 @@ longNum::longNum(const long num) : _sign(num >= 0), _length(_sign ? num : -num),
 
 #if defined _IS_LESSER_
 
+	fill_maxSizeT();
+
 	// When _IS_LESSER_ is defined, all the numbers > longNum_MAX_VALUE will be created as array-based
 	long NUM(_sign ? num : -num);
 
@@ -1318,8 +1320,6 @@ void longNum::opPlusEqual_2(longNum &n1, const longNum &n2, const size_t n2_leng
 
 // -----------------------------------------------------------------------------------------------
 
-// pmv
-
 // operator += helper 3 (size_t += [])
 void longNum::opPlusEqual_3(longNum& n1, const longNum& n2, const size_t n1_length) const
 {
@@ -1337,7 +1337,7 @@ void longNum::opPlusEqual_3(longNum& n1, const longNum& n2, const size_t n1_leng
 		digitType *data = new digitType[n2._length + 1u];
 		digitType carryOver(0), *digit(data);
 
-		if (n2._length > 25)
+		if (n2._length > 25u)
 		{
 			memcpy(data, n2._values, sizeof(digitType) * n2._length);
 
@@ -1403,34 +1403,68 @@ void longNum::opPlusEqual_3(longNum& n1, const longNum& n2, const size_t n1_leng
 	}
 	else
 	{
-		n1._values = new digitType[n2._length];
+		digitType* data = new digitType[n2._length];
 		size_t cnt(0u);
-		digitType carryOver(0);
-		digitType* digit(n1._values);
+		digitType carryOver(0), * digit(data);
 
-		while (*ptr)
+		if (n2._length > 24u)
 		{
-			*digit = n2._values[i] - (*ptr % BASE + carryOver);
+			memcpy(data, n2._values, sizeof(digitType) * n2._length);
 
-			*ptr /= BASE;
+			while (*ptr && ++i)
+			{
+				size_t div = *ptr / BASE;
 
-			carryOver = *digit >= 0 ? 0 : 1;
-			*digit += carryOver ? BASE : 0;
-			cnt = *digit++ ? 0 : cnt + 1u;
-			++i;
+				*digit -= (*ptr % BASE + carryOver);
+				*ptr = div;
+
+				carryOver = *digit >= 0 ? 0 : 1;
+				*digit += carryOver ? BASE : 0;
+				cnt = *digit++ ? 0 : ++cnt;
+			}
+
+			for (; carryOver && i < n2._length; ++i, ++digit)
+			{
+				*digit -= carryOver;
+
+				carryOver = *digit >= 0 ? 0 : 1;
+				*digit += carryOver ? BASE : 0;
+				cnt = *digit ? 0 : ++cnt;
+			}
+
+			n1._values = data;
+			n1._length = n2._length - cnt;
+			n1._sign = n2._sign;
 		}
-
-		for (; i < n2._length; ++i)
+		else
 		{
-			*digit = n2._values[i] - carryOver;
+			digitType* n2digit(n2._values);
 
-			carryOver = *digit >= 0 ? 0 : 1;
-			*digit += carryOver ? BASE : 0;
-			cnt = *digit++ ? 0 : cnt + 1u;
+			while (*ptr && ++i)
+			{
+				size_t div = *ptr / BASE;
+
+				*digit = *n2digit++ - (*ptr % BASE + carryOver);
+				*ptr = div;
+
+				carryOver = *digit >= 0 ? 0 : 1;
+				*digit += carryOver ? BASE : 0;
+				cnt = *digit++ ? 0 : ++cnt;
+			}
+
+			for (; i < n2._length; ++i, ++digit)
+			{
+				*digit = *n2digit++ - carryOver;
+
+				carryOver = *digit >= 0 ? 0 : 1;
+				*digit += carryOver ? BASE : 0;
+				cnt = *digit ? 0 : ++cnt;
+			}
+
+			n1._values = data;
+			n1._length = n2._length - cnt;
+			n1._sign = n2._sign;
 		}
-
-		n1._length = i - cnt;
-		n1._sign = n2._sign;
 
 		// Need to check if we can store the number as a size_t
 		if (n1._length <= longNum_MAX_SIZE_T_LENGTH)
@@ -1443,7 +1477,6 @@ void longNum::opPlusEqual_3(longNum& n1, const longNum& n2, const size_t n1_leng
 // -----------------------------------------------------------------------------------------------
 
 // operator += helper 4 (size_t += size_t)
-// optimized
 void longNum::opPlusEqual_4(longNum& n1, const longNum& n2) const
 {
 	TRACE_CODE_FLOW("longNum::opPlusEqual_4");
@@ -1455,89 +1488,59 @@ void longNum::opPlusEqual_4(longNum& n1, const longNum& n2) const
 		size_t length = n1._length + n2._length;
 
 #if defined _IS_LESSER_
-
-		// Overflow: need to allocate memory
-		if (length > longNum_MAX_VALUE)
-		{
-			TRACE_MSG_IF1("Alloc (opPlusEqual_4)");
-
-			n1._values = new digitType[longNum_MAX_SIZE_T_LENGTH];
-			n1._length = longNum_MAX_SIZE_T_LENGTH;
-			digitType* digit(n1._values);
-
-			size_t MAX(longNum_MAX_VALUE);
-			digitType carryOver(1);
-
-			// Imitate size_t overflow
-			length -= (longNum_MAX_VALUE + 1);
-
-			while (length)
-			{
-				*digit = MAX % BASE + length % BASE + carryOver;
-
-				length /= BASE;
-				MAX /= BASE;
-
-				carryOver = *digit >= BASE ? 1 : 0;
-				*digit++ = carryOver ? *digit - BASE : *digit;
-			}
-
-			while (MAX)
-			{
-				*digit = MAX % BASE + carryOver;
-
-				MAX /= BASE;
-
-				carryOver = *digit >= BASE ? 1 : 0;
-				*digit++ = carryOver ? *digit - BASE : *digit;
-			}
-		}
-		else
-		{
-			n1._length = length;
-		}
-
+  #define OVERFLOW_CONDITION	length > longNum_MAX_VALUE
+  #define IMITATE_OVERFLOW		length -= (longNum_MAX_VALUE + 1);
 #else
+  #define OVERFLOW_CONDITION	length < n1._length || length < n2._length
+  #define IMITATE_OVERFLOW		;
+#endif
 
 		// Overflow: need to allocate memory
-		if (length < n1._length || length < n2._length)
+		if (OVERFLOW_CONDITION)
 		{
+			IMITATE_OVERFLOW;
+
 			TRACE_MSG_IF1("Alloc (opPlusEqual_4)");
 
-			n1._values = new digitType[longNum_MAX_SIZE_T_LENGTH];
-			n1._length = longNum_MAX_SIZE_T_LENGTH;
-			digitType *digit(n1._values);
-
-			size_t MAX(longNum_MAX_VALUE);
+			size_t i(0u);
+			digitType *data = new digitType[longNum_MAX_SIZE_T_LENGTH];
+			digitType* digit(data);
 			digitType carryOver(1);
 
-			while (length)
-			{
-				*digit = MAX % BASE + length % BASE + carryOver;
+			memcpy(data, maxSizeT, sizeof(digitType) * longNum_MAX_SIZE_T_LENGTH);
 
-				length /= BASE;
-				MAX /= BASE;
+			while (length && ++i)
+			{
+				size_t div = length / BASE;
+				digitType rem = length % BASE;
+
+				*digit += rem + carryOver;
+				length = div;
 
 				carryOver = *digit >= BASE ? 1 : 0;
-				*digit++ = carryOver ? *digit - BASE : *digit;
+				*digit -= carryOver ? BASE : 0;
+				++digit;
 			}
 
-			while (MAX)
+			for (; carryOver && i < longNum_MAX_SIZE_T_LENGTH; ++i, ++digit)
 			{
-				*digit = MAX % BASE + carryOver;
-
-				MAX /= BASE;
+				*digit += carryOver;
 
 				carryOver = *digit >= BASE ? 1 : 0;
-				*digit++ = carryOver ? *digit - BASE : *digit;
+				*digit -= carryOver ? BASE : 0;
 			}
+
+			n1._values = data;
+			n1._length = longNum_MAX_SIZE_T_LENGTH;
 		}
 		else
 		{
 			n1._length = length;
 		}
 
-#endif
+#undef OVERFLOW_CONDITION
+#undef IMITATE_OVERFLOW
+
 	}
 	else
 	{
@@ -1620,13 +1623,13 @@ longNum	longNum::operator -(const Type other) const
 
 // -----------------------------------------------------------------------------------------------
 
-// TODO: make this work
 template <>
 longNum longNum::operator -(const char* str) const
 {
 	TRACE_CODE_FLOW("longNum::operator -(const char *)");
 
-	return longNum(0);
+	// TODO: optimize later
+	return std::move(*this - longNum(str));
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -1692,6 +1695,7 @@ longNum& longNum::operator -=(const Type other)
 	TRACE_CODE_FLOW("longNum::operator -=(const Type)");
 
 	// For signed types, it is faster to just go with longNum(other)
+	// I honestly don't know why.
 	if (Type(-1) < Type(0))
 	{
 		return *this -= longNum(other);
@@ -1709,25 +1713,23 @@ longNum& longNum::operator -=(const Type other)
 		{
 			// Subtract numbers in place
 
-			while (*ptr)
+			while (*ptr && ++i)
 			{
 				*digit -= (*ptr % BASE + carryOver);
-
 				*ptr /= BASE;
 
 				carryOver = *digit >= 0 ? 0 : 1;
 				*digit += carryOver ? BASE : 0;
-				cnt = *digit++ ? 0 : cnt + 1u;
-				++i;
+				cnt = *digit++ ? 0 : ++cnt;
 			}
 
-			for (; (cnt || carryOver) && i < _length; ++i)
+			for (; (cnt || carryOver) && i < _length; ++i, ++digit)
 			{
 				*digit -= carryOver;
 
 				carryOver = *digit >= 0 ? 0 : 1;
 				*digit += carryOver ? BASE : 0;
-				cnt = *digit++ ? 0 : cnt + 1u;
+				cnt = *digit ? 0 : ++cnt;
 			}
 
 			_length -= cnt;
@@ -1742,9 +1744,10 @@ longNum& longNum::operator -=(const Type other)
 
 			while (*ptr)
 			{
-				*digit += *ptr % BASE + carryOver;
+				Type div = *ptr / BASE;
 
-				*ptr /= BASE;
+				*digit += *ptr % BASE + carryOver;
+				*ptr = div;
 
 				carryOver = *digit >= BASE ? 1 : 0;
 				*digit++ = carryOver ? *digit - BASE : *digit;
@@ -1762,15 +1765,7 @@ longNum& longNum::operator -=(const Type other)
 			// If carryOver > 0, we need to reallocate and normalize
 			if (carryOver)
 			{
-				TRACE_MSG_IF1("Alloc (operator -= <Type>)");
-
-				digitType* data = new digitType[_length + 1u];
-
-				memcpy(data, _values, sizeof(digitType) * _length);
-				data[_length++] = carryOver;
-
-				delete[] _values;
-				_values = data;
+				realloc_And_Normalize(carryOver, "Alloc (operator -= <Type>)");
 			}
 		}
 	}
@@ -1800,87 +1795,46 @@ longNum& longNum::operator -=(const Type other)
 			size_t length = _length + other;
 
 #if defined _IS_LESSER_
-
-			// Overflow: need to allocate memory
-			if (length < _length || length < other)
-			{
-				TRACE_MSG_IF1("Alloc (operator -= <Type>)");
-
-				size_t MAX(longNum_MAX_VALUE), i(0u);
-				digitType carryOver(1);
-
-				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH], * digit(data);
-
-				// Imitate size_t overflow
-				length -= (longNum_MAX_VALUE + 1);
-
-				while (length)
-				{
-					*digit = MAX % BASE + length % BASE + carryOver;
-
-					length /= BASE;
-					MAX /= BASE;
-
-					carryOver = *digit >= BASE ? 1 : 0;
-					*digit++ = carryOver ? *digit - BASE : *digit;
-					++i;
-				}
-
-				while (MAX)
-				{
-					*digit = MAX % BASE + carryOver;
-
-					MAX /= BASE;
-
-					carryOver = *digit >= BASE ? 1 : 0;
-					*digit++ = carryOver ? *digit - BASE : *digit;
-					++i;
-				}
-
-				_length = i;
-				_values = data;
-			}
-			else
-			{
-				_length = length;
-			}
-
+  #define OVERFLOW_CONDITION	length > longNum_MAX_VALUE
+  #define IMITATE_OVERFLOW		length -= (longNum_MAX_VALUE + 1);
 #else
+  #define OVERFLOW_CONDITION	length < _length || length < other
+  #define IMITATE_OVERFLOW		;
+#endif
 
 			// Overflow: need to allocate memory
-			if (length < _length || length < other)
+			if (OVERFLOW_CONDITION)
 			{
+				IMITATE_OVERFLOW;
+
 				TRACE_MSG_IF1("Alloc (operator -= <Type>)");
 
-				size_t MAX(longNum_MAX_VALUE), i(0u);
+				size_t i(0u);
 				digitType carryOver(1);
-
 				digitType* data = new digitType[longNum_MAX_SIZE_T_LENGTH], * digit(data);
 
-				while (length)
-				{
-					*digit = MAX % BASE + length % BASE + carryOver;
+				memcpy(data, maxSizeT, sizeof(digitType) * longNum_MAX_SIZE_T_LENGTH);
 
-					length /= BASE;
-					MAX /= BASE;
+				while (length && ++i)
+				{
+					size_t div = length / BASE;
+
+					*digit += length % BASE + carryOver;
+					length = div;
 
 					carryOver = *digit >= BASE ? 1 : 0;
 					*digit++ = carryOver ? *digit - BASE : *digit;
-					++i;
 				}
 
-				while (MAX)
+				for (; carryOver && i < longNum_MAX_SIZE_T_LENGTH; ++i, ++digit)
 				{
-					*digit = MAX % BASE + carryOver;
-
-					MAX /= BASE;
+					*digit += carryOver;
 
 					carryOver = *digit >= BASE ? 1 : 0;
-					*digit++ = carryOver ? *digit - BASE : *digit;
-					++i;
+					*digit = carryOver ? *digit - BASE : *digit;
 				}
 
-				_length = i;
+				_length = longNum_MAX_SIZE_T_LENGTH;
 				_values = data;
 			}
 			else
@@ -1888,7 +1842,9 @@ longNum& longNum::operator -=(const Type other)
 				_length = length;
 			}
 
-#endif
+#undef OVERFLOW_CONDITION
+#undef IMITATE_OVERFLOW
+
 		}
 	}
 
@@ -1907,6 +1863,8 @@ longNum& longNum::operator -=(const char* str)
 }
 
 // -----------------------------------------------------------------------------------------------
+
+// pmv
 
 // operator -= helper 1 ([] -= [])
 void longNum::opMinusEqual_1(longNum& n1, const longNum& n2) const
@@ -3724,10 +3682,10 @@ int testLesser(const long N)
 
 	if(0)
 	{
-		// ERROR 4 in operator - : malformed longNum : -3333 - -2880
+		// ERROR 1 in operator += : -452 += 1000 :: : Expected 548, got B548
 
-		long l1 = -3333;
-		long l2 = -3332;
+		long l1 = -452;
+		long l2 = -452;
 
 		longNum n1(l1), n2(l2);
 
@@ -3735,7 +3693,7 @@ int testLesser(const long N)
 
 		std::cout << n1.get() << std::endl;
 
-		std::cout << l1 - l2 << std::endl;
+		std::cout << l1 + l2 << std::endl;
 
 		if( n1.getValues())
 			std::cout << "has values" << std::endl;
@@ -3744,7 +3702,6 @@ int testLesser(const long N)
 			std::cout << "is malformed" << std::endl;
 
 		return 0;
-
 	}
 
 
@@ -5211,20 +5168,26 @@ void testConstructor()
 
 		if (1)
 		{
-			size_t N = 499999999;
+			size_t N = 399999999;
 
-			size_t n = 13;
+			size_t n = size_t(-1) / N;
+			size_t iter = 1;
+			
+			// 29.912 -- 25.271 -- 24.2
 
 			for (volatile size_t i = 0; i < N; ++i)
 			{
-				longNum tmp(n2);
+				longNum tmp(size_t(-1));
+				tmp.flipSign();
 
-				tmp += n7;
+				tmp -= iter;
+				iter += n;
+
 //				res += tmp;
 //				n *= 37;
 			}
 
-			if(res.get() == "931560573859211205136335286838")
+			if(res.get() == "-27633222622416908240928")
 				std::cout << " OK!!!" << std::endl;
 			else
 				std::cout << " FAIL!!!\n\n new res = " << res.get() << std::endl;
