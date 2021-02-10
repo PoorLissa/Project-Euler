@@ -1150,7 +1150,8 @@ void longNum::opPlusEqual_1(longNum& n1, const longNum& n2) const
 
 				size_t threshold(len1 < 200 ? len1 * 100 / 133 : len1 * 5 / 6);
 
-				if (len2 < threshold)
+				//if (len2 < threshold)
+				if (0)
 				{
 					memcpy(data, pn1->_values, sizeof(digitType) * len1);
 
@@ -1864,7 +1865,7 @@ longNum& longNum::operator -=(const char* str)
 
 // -----------------------------------------------------------------------------------------------
 
-// pmv
+// pmv opPlusEqual_1
 
 // operator -= helper 1 ([] -= [])
 void longNum::opMinusEqual_1(longNum& n1, const longNum& n2) const
@@ -1889,27 +1890,70 @@ void longNum::opMinusEqual_1(longNum& n1, const longNum& n2) const
 		}
 		else
 		{
-			const longNum* pn1(&n1);
-			const longNum* pn2(&n2);
+			const longNum* pn1(isGreater < 2 ? &n1 : &n2);
+			const longNum* pn2(isGreater < 2 ? &n2 : &n1);
 
-			size_t i(0u), cnt(0u);
+			n1._sign = isGreater < 2 ? n1._sign : !n1._sign;
+
+			size_t i(0u), cnt(0u), len1(pn1->_length), len2(pn2->_length);
+			digitType* dgt1(pn1->_values), * dgt2(pn2->_values);
 			digitType carryOver(0);
-
-			if (isGreater > 1)
-			{
-				// n1 < n2
-				pn1 = &n2;
-				pn2 = &n1;
-
-				n1._sign = !n1._sign;
-			}
 
 			if (isGreater == 3)
 			{
-				// Will need another buffer to store the result
-
+				// n2.length > n1.length: Will need another buffer to store the result
 				TRACE_MSG_IF1("Alloc tmp buffer (opMinusEqual_1)");
 
+				digitType* data = new digitType[len1], * digit(data);
+
+				if (0)
+				{
+					memcpy(data, dgt1, sizeof(digitType) * len1);
+
+					for (; i < len2; ++i, ++digit, ++dgt2)
+					{
+						*digit -= (*dgt2 + carryOver);
+
+						carryOver = *digit >= 0 ? 0 : 1;
+						*digit += carryOver ? BASE : 0;
+						cnt = *digit ? 0 : ++cnt;
+					}
+
+					for (; (cnt || carryOver) && i < len1; ++i, ++digit)
+					{
+						*digit -= carryOver;
+
+						carryOver = *digit >= 0 ? 0 : 1;
+						*digit += carryOver ? BASE : 0;
+						cnt = *digit ? 0 : ++cnt;
+					}
+				}
+				else
+				{
+					for (; i < len2; ++i, ++digit, ++dgt1, ++dgt2)
+					{
+						digitType nRes(*dgt1 - (*dgt2 + carryOver));
+
+						carryOver = nRes >= 0 ? 0 : 1;
+						*digit = carryOver ? nRes + BASE : nRes;
+						cnt = *digit ? 0 : ++cnt;
+					}
+
+					for (; i < len1; ++i, ++digit, ++dgt1)
+					{
+						digitType nRes(*dgt1 - carryOver);
+
+						carryOver = nRes >= 0 ? 0 : 1;
+						*digit = carryOver ? nRes + BASE : nRes;
+						cnt = *digit ? 0 : ++cnt;
+					}
+				}
+
+				delete[] n1._values;
+				n1._values = data;
+
+/*
+				// OLD
 				digitType* res = new digitType[pn1->_length];
 				digitType* digit(res);
 
@@ -1933,6 +1977,7 @@ void longNum::opMinusEqual_1(longNum& n1, const longNum& n2) const
 
 				delete[] n1._values;
 				n1._values = res;
+*/
 			}
 			else
 			{
@@ -5152,73 +5197,90 @@ void testConstructor()
 	longNum n5("184467440737095516193"); 
 	longNum n6("184467440737095516197"); 
 	 
-	longNum n7("511111111111222222222222333333333333444444444445555555555555566666666666666677777777777788888888888899999999990000000000003285760128475643665508346502");
+	longNum n7("748132797979674813279797967957483626252163737581069870558106987057695930676984811390859876095492545329706958748738754498673285760128475643665508346502");
 	longNum n8("748132797979679574836262521637375810698705769593067698481139085987609549254532970695874873875449867");
 	longNum n9("279797967957483626252163737581069870576959306769848");
 
-	{
-		longNum res,
-			n0("748132797979679574836262521637375810698705769593067698481139085987609549254532970695874873875449867"),
-			n1("53285760128475643665508346502"),
-			n2("18446744073709551615"),
-			n3("1844674407370955161547");
+	longNum nQ ("55555555555555555555555555555555555748132797979679574836262521637375810698705769593067698481139085987609549254532970695874873875449867");
+	//longNum n8a("7473846651816951384665181699895261426259115738434888006875488800706382347463078265794690162193970527843772517899900157441746124741840641947254844");
+	longNum n8a("138466518169989526142625911573843488800687548880070638234746307826579469016219397052784377");
+	//longNum n8a("843488800687548880070638234746307826579469016219397052784377");
 
+//#define isTest	// for n6
+
+
+	//								memcpy		// inplace
+	// n6 -= n7	: 24.727 (orig)	-- 10.665		-- 22.528
+	// n9 -= n7	: 25.327 (orig)	-- 14.137		-- 24.466
+	// n8 -= n7	: 28.115 (orig)	-- 21.793		-- 26.448
+	// nQ -= n7	: 27.838 (orig)	-- 26.219		-- 25.442
+
+	// 150 vs 100	: 24.745 / 21.861
+	// 150 vs 110	: 25.006 / 23.437
+	// 150 vs 120	: 25.935 / 24.298
+	// 150 vs 130	: 27.170 / 25.141		30.993 / 25.782
+	// 150 vs 140	: 27.869 / 27.183		29.062 / 27.180
+	// 150 vs 145	: 26.161 / 26.691		29.455 / 27.350
+
+	{
 		long long minval = -(size_t(-1) / 2);
 		long long maxval = +(size_t(-1) / 2);
 
+		// memcpy
+
+		// 19.691 - 20.933
+		// 19.864 - 20.611
+		// 15.081 - 17.732
+		// 13.324 - 16.738
+
+		// + vs -
+		// memcpy				digit-by-digit
+		// 38.700				36.91					// 99 - 90, +		memcpy loses
+		// 39.784				43.098					// 99 - 90, -		memcpy wins
+
+		// 36.544				38.592					// 99 - 80, +		memcpy wins
+		// 38.047				41.386					// 99 - 80, -		memcpy wins
+
+		// 29.549				34.335					// 99 - 60, +		memcpy wins
+		// 31.225				34.054					// 99 - 60, -		memcpy wins
+
+		// 46.001
+		// 46.009
+
 		if (1)
 		{
-			size_t N = 399999999;
+			size_t N = 199999999;
 
+#if defined isTest
+			N = 999;
+#endif
 			size_t n = size_t(-1) / N;
 			size_t iter = 1;
-			
-			// 29.912 -- 25.271 -- 24.2
 
+//n8.flipSign();
+			
 			for (volatile size_t i = 0; i < N; ++i)
 			{
-				longNum tmp(size_t(-1));
-				tmp.flipSign();
-
-				tmp -= iter;
-				iter += n;
-
-//				res += tmp;
+				longNum tmp(n8a);
+//				longNum tmp(n6);
+				tmp -= n8;
 //				n *= 37;
+
+#if defined isTest
+				res += tmp;
+#endif
 			}
 
-			if(res.get() == "-27633222622416908240928")
-				std::cout << " OK!!!" << std::endl;
+#if defined isTest
+			if(res.get() == "-747384665181695138466518169989526142625911573843488800687548880070638234746307826579469016219397052784377251789990015744174612474184064194725484417474695")
+				std::cout << "\n\n\t test is OK!!!\n" << std::endl;
 			else
-				std::cout << " FAIL!!!\n\n new res = " << res.get() << std::endl;
+				std::cout << "\n\n\t test is FAIL!!!\n new res = " << res.get() << std::endl;
+#endif
 
 			return;
 		}
 	}
-
-	size_t n = 13;
-
-	n8.flipSign();
-
-	longNum n10(size_t(-1));
-
-	// 22.143 -- 
-	for (volatile size_t i = 1; i < 699999999; ++i)
-	{
-		n10 += n;
-		res += n10;
-		n *= 37;
-	}
-	
-	if (res != "2259631663177030551977083652484385355")
-	{
-		std::cout << std::endl;
-		std::cout << " -- FAIL --" << std::endl;
-		std::cout << std::endl;
-		std::cout << res.get() << std::endl;
-	}
-
-	return;
 
 #if 0
 	longNum n1("18446744073709551616");
@@ -5254,5 +5316,4 @@ void testConstructor()
 		longNum nnn5(str5);
 	}
 }
-
 

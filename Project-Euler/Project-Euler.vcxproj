@@ -150,6 +150,7 @@
     <ClInclude Include="__Chrono.h" />
     <ClInclude Include="__Helpers.h" />
     <ClInclude Include="__longNum.h" />
+    <ClInclude Include="__Matrix.h" />
     <ClInclude Include="__Primes.h" />
     <ClInclude Include="__stringNum.h" />
     <ClInclude Include="__test.h" />

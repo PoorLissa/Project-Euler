@@ -20,6 +20,7 @@
 #include "__Helpers.h"
 #include "__stringNum.h"
 #include "__longNum.h"
+#include "__Matrix.h"
 
 #ifdef max
   #undef max
@@ -5539,6 +5540,62 @@ void func81()
 
 void func00()
 {
+	{
+		float arr1[] = { 3, 6, 0, -3, 2, 4, 5, 7 };
+		float arr2[] = { 1, -4, 6, 0, -2, -3 };
+
+		myMatrix<float> m1(2, 4, arr1);
+		myMatrix<float> m2(3, 2, arr2);
+		m1.print();
+		std::cout << std::endl;
+		m2.print();
+		std::cout << std::endl;
+
+		myMatrix<float> m3 = m1 * m2;
+		m3.print();
+
+		return;
+	}
+
+#if 0
+
+	float arr1[] = { 2,  1, -3,  0, 4, -1 };
+	float arr2[] = { 5, -1,  6, -3, 0,  7 };
+
+	myMatrix<float> m1(2, 3, arr1);
+	myMatrix<float> m2(3, 2, arr2);
+	m1.print();
+	std::cout << std::endl;
+	m2.print();
+	std::cout << std::endl;
+
+	myMatrix<float> m3 = m1 * m2;
+
+	std::cout << std::endl;
+	std::cout << std::endl;
+	std::cout << std::endl;
+
+	m3.print();
+
+#else
+
+	float arr1[] = { 2, 4,  0, -2, 1, 3, -1, 0, 1 };
+	float arr2[] = { 1, 2, -1 };
+
+	myMatrix<float> m1(3, 3, arr1);
+	myMatrix<float> m2(1, 3, arr2);
+	m1.print();
+	std::cout << std::endl;
+	m2.print();
+	std::cout << std::endl;
+
+	myMatrix<float> m3 = m1 * m2;
+	m3.print();
+
+#endif
+
+	return;
+
 	func81();
 }
 
