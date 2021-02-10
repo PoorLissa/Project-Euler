@@ -2,22 +2,29 @@
 
 #include <iostream>
 
+// -----------------------------------------------------------------------------------------------
 
-
-template <class T>
+template <class Type>
 class myMatrix {
 
 	public:
 
-		myMatrix(size_t, size_t, T = 0);
-		myMatrix(size_t, size_t, T*);
+		myMatrix(size_t, size_t, Type = 0);
+		myMatrix(size_t, size_t, Type*);
 		myMatrix(const myMatrix &);
 		myMatrix(	   myMatrix &&) noexcept;
 		~myMatrix();
 
-		myMatrix operator + (const myMatrix<T> &) const;
-		myMatrix operator - (const myMatrix<T> &) const;
-		myMatrix operator * (const myMatrix<T> &) const;
+		myMatrix&	operator = (const myMatrix & );
+		myMatrix&	operator = (const myMatrix &&) noexcept;
+
+		myMatrix	operator + (const myMatrix &) const;
+		myMatrix	operator - (const myMatrix &) const;
+		myMatrix	operator * (const myMatrix &) const;
+		bool		operator ==(const myMatrix &) const;
+		bool		operator !=(const myMatrix &) const;
+
+		Type& at(size_t, size_t) const;
 
 		template <class U> myMatrix operator * (const U) const;
 
@@ -25,20 +32,24 @@ class myMatrix {
 
 	private:
 		size_t _Cols, _Rows;
-		T* _data;
+		Type* _data;
 };
 
-template <class T>
-myMatrix<T>::myMatrix(size_t x, size_t y, T val) : _Cols(x), _Rows(y)
+// -----------------------------------------------------------------------------------------------
+
+template <class Type>
+myMatrix<Type>::myMatrix(size_t rows, size_t columns, Type val) : _Cols(columns), _Rows(rows), _data(nullptr)
 {
-	_data = new T[_Cols * _Rows];
+	_data = new Type[_Cols * _Rows];
 
 	for (size_t i = 0; i < _Cols * _Rows; i++)
 		_data[i] = val;
 }
 
+// -----------------------------------------------------------------------------------------------
+
 template <class T>
-myMatrix<T>::myMatrix(const myMatrix<T> &other) : _Cols(other._Cols), _Rows(other._Rows)
+myMatrix<T>::myMatrix(const myMatrix<T> &other) : _Cols(other._Cols), _Rows(other._Rows), _data(nullptr)
 {
 	_data = new T[_Cols * _Rows];
 
@@ -46,14 +57,18 @@ myMatrix<T>::myMatrix(const myMatrix<T> &other) : _Cols(other._Cols), _Rows(othe
 		_data[i] = other._data[i];
 }
 
+// -----------------------------------------------------------------------------------------------
+
 template <class T>
-myMatrix<T>::myMatrix(size_t x, size_t y, T *data) : _Cols(x), _Rows(y)
+myMatrix<T>::myMatrix(size_t rows, size_t columns, T *data) : _Cols(columns), _Rows(rows), _data(nullptr)
 {
 	_data = new T[_Cols * _Rows];
 
 	for (size_t i = 0; i < _Cols * _Rows; i++)
 		_data[i] = *data++;
 }
+
+// -----------------------------------------------------------------------------------------------
 
 template <class T>
 myMatrix<T>::myMatrix(myMatrix<T>&& other) noexcept
@@ -67,6 +82,8 @@ myMatrix<T>::myMatrix(myMatrix<T>&& other) noexcept
 	other._data = nullptr;
 }
 
+// -----------------------------------------------------------------------------------------------
+
 template <class T>
 myMatrix<T>::~myMatrix()
 {
@@ -76,6 +93,8 @@ myMatrix<T>::~myMatrix()
 		_data = nullptr;
 	}
 }
+
+// -----------------------------------------------------------------------------------------------
 
 template <class T>
 void myMatrix<T>::print() const
@@ -94,41 +113,115 @@ void myMatrix<T>::print() const
 	}
 }
 
+// -----------------------------------------------------------------------------------------------
+
+template <class Type>
+myMatrix<Type>& myMatrix<Type>::operator = (const myMatrix<Type>& other)
+{
+	if (this != &other)
+	{
+		_Cols = other._Cols;
+		_Rows = other._Rows;
+
+		_data = new T[_Cols * _Rows];
+
+		for (size_t i = 0u; i < _Cols * _Rows; i++)
+			_data[i] = other._data[i];
+	}
+
+	return *this;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+template <class Type>
+myMatrix<Type>& myMatrix<Type>::operator = (const myMatrix<Type>&& other) noexcept
+{
+	if (this != &other)
+	{
+		if (_data)
+			delete[] _data;
+
+		// Steal the data
+		_Rows = std::move(other._Rows);
+		_Cols = std::move(other._Cols);
+		_data = std::move(other._data);
+
+		// Leave the other object in empty state
+		other._Rows = 0u;
+		other._Cols = 0u;
+		other._data = nullptr;
+	}
+
+	return *this;
+}
+
+// -----------------------------------------------------------------------------------------------
+
 template <class T>
 myMatrix<T> myMatrix<T>::operator + (const myMatrix<T> &other) const
 {
-	myMatrix<T> res(_Cols, _Rows);
+	myMatrix<T> res(_Rows, _Cols);
 
 	if (_Cols == other._Cols && _Rows == other._Rows)
-		for (size_t i = 0; i < _Cols, _Rows; i++)
+		for (size_t i = 0; i < _Cols * _Rows; i++)
 			res._data[i] = _data[i] + other._data[i];
 
 	return std::move(res);
 }
 
+// -----------------------------------------------------------------------------------------------
+
 template <class T>
 myMatrix<T> myMatrix<T>::operator - (const myMatrix<T> &other) const
 {
-	myMatrix<T> res(_Cols, _Rows);
+	myMatrix<T> res(_Rows, _Cols);
 
 	if (_Cols == other._Cols && _Rows == other._Rows)
-		for (size_t i = 0; i < _Cols, _Rows; i++)
+		for (size_t i = 0; i < _Cols * _Rows; i++)
 			res._data[i] = _data[i] - other._data[i];
 
 	return std::move(res);
 }
 
+// -----------------------------------------------------------------------------------------------
+
 template <class T>
 template <class U>
 myMatrix<T> myMatrix<T>::operator * (const U n) const
 {
-	myMatrix<T> res(_Cols, _Rows);
+	myMatrix<T> res(_Rows, _Cols);
 
 	for (size_t i = 0; i < _Cols * _Rows; i++)
 		res._data[i] = static_cast<T>(_data[i] * n);
 
 	return std::move(res);
 }
+
+// -----------------------------------------------------------------------------------------------
+
+template <class Type>
+bool myMatrix<Type>::operator ==(const myMatrix<Type>& other) const
+{
+	if (_Cols != other._Cols || _Rows != other._Rows)
+		return false;
+
+	for (size_t i = 0u; i < _Rows * _Cols; i++)
+		if (_data[i] != other._data[i])
+			return false;
+
+	return true;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+template <class Type>
+bool myMatrix<Type>::operator !=(const myMatrix<Type>& other) const
+{
+	return !(*this == other);
+}
+
+// -----------------------------------------------------------------------------------------------
 
 // Matrix multiplication [A x B] is possible only when A._Cols == B._Rows
 // Resulting matrix size will be [B._Cols x A._Rows]
@@ -138,20 +231,18 @@ myMatrix<Type> myMatrix<Type>::operator * (const myMatrix<Type>& other) const
 	if(_Cols != other._Rows)
 		throw "Incompatible matrices";
 
-	std::cout << " A[" <<	    _Cols << " x " <<	    _Rows << "]" << std::endl;
-	std::cout << " B[" << other._Cols << " x " << other._Rows << "]" << std::endl;
+//	std::cout << " A[" <<	    _Rows << " x " <<	    _Cols << "]" << std::endl;
+//	std::cout << " B[" << other._Rows << " x " << other._Cols << "]" << std::endl;
 
 	myMatrix<Type> res(_Rows, other._Cols, 0.0f);
-
-	//myMatrix<Type> res(other._Cols, _Rows, 0.0f);
 
 	Type* m1 = _data;
 	Type* m2 = other._data;
 	Type* m3 = res._data;
 
-	for (size_t i = 0; i < res._Cols; i++)
+	for (size_t i = 0; i < res._Rows; i++)
 	{
-		for (size_t j = 0; j < res._Rows; j++)
+		for (size_t j = 0; j < res._Cols; j++)
 		{
 			Type* row_i = m1 + _Cols * i;
 			Type* col_j = m2 + j;
@@ -168,35 +259,17 @@ myMatrix<Type> myMatrix<Type>::operator * (const myMatrix<Type>& other) const
 		}
 	}
 
-	std::cout << " C[" << res._Cols << " x " << res._Rows << "]" << std::endl;
+//	std::cout << " C[" << res._Rows << " x " << res._Cols << "]" << std::endl;
 
 	return std::move(res);
 }
 
+// -----------------------------------------------------------------------------------------------
 
+template <class Type>
+Type& myMatrix<Type>::at(size_t x, size_t y) const
+{
+	return *(_data + x * _Cols + y);
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// -----------------------------------------------------------------------------------------------
