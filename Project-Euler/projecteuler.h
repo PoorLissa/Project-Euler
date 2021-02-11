@@ -5562,10 +5562,7 @@ void func00()
 
 #else
 
-	float arr1[] = { 2, 4,  0, -2, 1, 3, -1, 0, 1 };
-	float arr2[] = { 1, 2, -1 };
-
-	myMatrix<float> m1(3, 3, arr1);
+	myMatrix<float> m1(3, 3, { 2, 4,  0, -2, 1, 3, -1, 0, 1 });
 	m1.print();
 
 	float ttt = m1.at(0, 0);
@@ -5585,6 +5582,15 @@ void func00()
 	std::cout << std::endl;
 	m1.print();
 	std::cout << std::endl;
+
+	myMatrix<float> m5(2, 3, {1, 2, 3, 4, 5, 6});
+	m5.print();
+
+	std::cout << std::endl;
+
+	m5 *= 10;
+
+	m5.print();
 
 
 #endif

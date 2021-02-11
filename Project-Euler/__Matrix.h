@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <initializer_list>
 
 // -----------------------------------------------------------------------------------------------
 
@@ -11,6 +12,7 @@ class myMatrix {
 
 		myMatrix(size_t, size_t, Type = 0);
 		myMatrix(size_t, size_t, Type*);
+		myMatrix(size_t, size_t, std::initializer_list<Type>);
 		myMatrix(const myMatrix &);
 		myMatrix(	   myMatrix &&) noexcept;
 		~myMatrix();
@@ -26,7 +28,8 @@ class myMatrix {
 
 		Type& at(size_t, size_t) const;
 
-		template <class U> myMatrix operator * (const U) const;
+		template <class NUMERIC> myMatrix	operator * (const NUMERIC) const;
+		template <class NUMERIC> myMatrix&	operator *=(const NUMERIC);
 
 		void print() const;
 
@@ -48,10 +51,10 @@ myMatrix<Type>::myMatrix(size_t rows, size_t columns, Type val) : _Cols(columns)
 
 // -----------------------------------------------------------------------------------------------
 
-template <class T>
-myMatrix<T>::myMatrix(const myMatrix<T> &other) : _Cols(other._Cols), _Rows(other._Rows), _data(nullptr)
+template <class Type>
+myMatrix<Type>::myMatrix(const myMatrix<Type> &other) : _Cols(other._Cols), _Rows(other._Rows), _data(nullptr)
 {
-	_data = new T[_Cols * _Rows];
+	_data = new Type[_Cols * _Rows];
 
 	for (size_t i = 0; i < _Cols * _Rows; i++)
 		_data[i] = other._data[i];
@@ -59,10 +62,10 @@ myMatrix<T>::myMatrix(const myMatrix<T> &other) : _Cols(other._Cols), _Rows(othe
 
 // -----------------------------------------------------------------------------------------------
 
-template <class T>
-myMatrix<T>::myMatrix(size_t rows, size_t columns, T *data) : _Cols(columns), _Rows(rows), _data(nullptr)
+template <class Type>
+myMatrix<Type>::myMatrix(size_t rows, size_t columns, Type *data) : _Cols(columns), _Rows(rows), _data(nullptr)
 {
-	_data = new T[_Cols * _Rows];
+	_data = new Type[_Cols * _Rows];
 
 	for (size_t i = 0; i < _Cols * _Rows; i++)
 		_data[i] = *data++;
@@ -70,8 +73,25 @@ myMatrix<T>::myMatrix(size_t rows, size_t columns, T *data) : _Cols(columns), _R
 
 // -----------------------------------------------------------------------------------------------
 
-template <class T>
-myMatrix<T>::myMatrix(myMatrix<T>&& other) noexcept
+// Example: myMatrix<float> m(2, 3, {1, 2, 3, 4, 5, 6});
+template <class Type>
+myMatrix<Type>::myMatrix(size_t rows, size_t columns, std::initializer_list<Type> args) : _Cols(columns), _Rows(rows), _data(nullptr)
+{
+	if (args.size() != _Cols * _Rows)
+		throw std::invalid_argument("Matrix size does not match the size of initializer list");
+
+	_data = new Type[_Cols * _Rows];
+
+	Type* dataIter = _data;
+
+	for (auto iter = args.begin(); iter != args.end(); ++iter)
+		*dataIter++ = *iter;
+}
+
+// -----------------------------------------------------------------------------------------------
+
+template <class Type>
+myMatrix<Type>::myMatrix(myMatrix<Type> && other) noexcept
 {
 	_Cols = other._Cols;
 	_Rows = other._Rows;
@@ -84,8 +104,8 @@ myMatrix<T>::myMatrix(myMatrix<T>&& other) noexcept
 
 // -----------------------------------------------------------------------------------------------
 
-template <class T>
-myMatrix<T>::~myMatrix()
+template <class Type>
+myMatrix<Type>::~myMatrix()
 {
 	if (_data)
 	{
@@ -96,8 +116,8 @@ myMatrix<T>::~myMatrix()
 
 // -----------------------------------------------------------------------------------------------
 
-template <class T>
-void myMatrix<T>::print() const
+template <class Type>
+void myMatrix<Type>::print() const
 {
 	size_t cnt(0u);
 
@@ -123,7 +143,7 @@ myMatrix<Type>& myMatrix<Type>::operator = (const myMatrix<Type>& other)
 		_Cols = other._Cols;
 		_Rows = other._Rows;
 
-		_data = new T[_Cols * _Rows];
+		_data = new Type[_Cols * _Rows];
 
 		for (size_t i = 0u; i < _Cols * _Rows; i++)
 			_data[i] = other._data[i];
@@ -158,10 +178,10 @@ myMatrix<Type>& myMatrix<Type>::operator = (const myMatrix<Type>&& other) noexce
 
 // -----------------------------------------------------------------------------------------------
 
-template <class T>
-myMatrix<T> myMatrix<T>::operator + (const myMatrix<T> &other) const
+template <class Type>
+myMatrix<Type> myMatrix<Type>::operator + (const myMatrix<Type> &other) const
 {
-	myMatrix<T> res(_Rows, _Cols);
+	myMatrix<Type> res(_Rows, _Cols);
 
 	if (_Cols == other._Cols && _Rows == other._Rows)
 		for (size_t i = 0; i < _Cols * _Rows; i++)
@@ -172,8 +192,8 @@ myMatrix<T> myMatrix<T>::operator + (const myMatrix<T> &other) const
 
 // -----------------------------------------------------------------------------------------------
 
-template <class T>
-myMatrix<T> myMatrix<T>::operator - (const myMatrix<T> &other) const
+template <class Type>
+myMatrix<Type> myMatrix<Type>::operator - (const myMatrix<Type> &other) const
 {
 	myMatrix<T> res(_Rows, _Cols);
 
@@ -186,16 +206,28 @@ myMatrix<T> myMatrix<T>::operator - (const myMatrix<T> &other) const
 
 // -----------------------------------------------------------------------------------------------
 
-template <class T>
-template <class U>
-myMatrix<T> myMatrix<T>::operator * (const U n) const
+template <class Type>
+template <class NUMERIC>
+myMatrix<Type> myMatrix<Type>::operator * (const NUMERIC n) const
 {
-	myMatrix<T> res(_Rows, _Cols);
+	myMatrix<Type> res(_Rows, _Cols);
 
 	for (size_t i = 0; i < _Cols * _Rows; i++)
 		res._data[i] = static_cast<T>(_data[i] * n);
 
 	return std::move(res);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+template <class Type>
+template <class NUMERIC>
+myMatrix<Type>& myMatrix<Type>::operator *=(const NUMERIC n)
+{
+	for (size_t i = 0; i < _Cols * _Rows; i++)
+		_data[i] *= n;
+
+	return *this;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -266,10 +298,11 @@ myMatrix<Type> myMatrix<Type>::operator * (const myMatrix<Type>& other) const
 
 // -----------------------------------------------------------------------------------------------
 
+// Accesses the matrix element at [ i ][ j ], (i.e. at i-th Row, j-th Column)
 template <class Type>
-Type& myMatrix<Type>::at(size_t x, size_t y) const
+Type& myMatrix<Type>::at(size_t i, size_t j) const
 {
-	return *(_data + x * _Cols + y);
+	return *(_data + i * _Cols + j);
 }
 
 // -----------------------------------------------------------------------------------------------
