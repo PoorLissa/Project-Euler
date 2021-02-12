@@ -5,6 +5,80 @@
 
 // -----------------------------------------------------------------------------------------------
 
+class A {
+
+		int _a;
+
+	public:
+
+		A(int a = 123) : _a(a)	{ std::cout << " -->  A(" << _a << ")" << std::endl; }
+		~A()					{ std::cout << " --> ~A(" << _a << ")" << std::endl; }
+
+		operator int ()
+		{
+			return _a;
+		}
+};
+
+template <class Type>
+class B {
+
+		std::unique_ptr<Type[]> ptr;
+
+	public:
+
+		B()
+		{
+			std::cout << " -->  B()" << std::endl;
+
+			//ptr = std::make_unique<Type[]>(3);
+
+			Type* p = new Type[3];
+
+			ptr = std::unique_ptr<Type[]>(p);
+		}
+
+		B(const B& other)
+		{
+			ptr = std::make_unique<Type[]>(3);
+
+			for (size_t i = 0; i < 3; i++)
+			{
+				ptr.get()[i] = other.ptr.get()[i];
+			}
+		}
+
+		B(B && other) noexcept
+		{
+			ptr = std::move(other.ptr);
+		}
+
+		~B()
+		{
+			std::cout << " --> ~B()" << std::endl;
+		}
+
+		void print()
+		{
+			std::cout << " --> ";
+
+			if (ptr.get())
+			{
+				for (size_t i = 0; i < 3; i++)
+				{
+					std::cout << ptr.get()[i] << "; ";
+				}
+			}
+			else
+			{
+				std::cout << " is empty";
+			}
+
+			std::cout << std::endl;
+		}
+};
+
+
 template <class Type>
 class myMatrix {
 
@@ -34,8 +108,10 @@ class myMatrix {
 		void print() const;
 
 	private:
-		size_t _Cols, _Rows;
-		Type* _data;
+		size_t	_Cols, _Rows;
+		Type*	_data;
+
+		std::unique_ptr<Type[]> p;
 };
 
 // -----------------------------------------------------------------------------------------------
