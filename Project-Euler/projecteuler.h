@@ -5592,32 +5592,6 @@ void func00()
 
 	m5.print();
 
-	{
-		B<A> b;
-
-		std::cout << " --> b = ";
-		b.print();
-
-		{
-			B<A> bbb = b;
-
-			std::cout << " --> bbb = ";
-			bbb.print();
-
-			B<A> ccc = std::move(bbb);
-			std::cout << " --> ccc = ";
-			ccc.print();
-
-			std::cout << " --> bbb = ";
-			bbb.print();
-		}
-
-		std::cout << " --> b = ";
-		b.print();
-
-	}
-
-
 #endif
 
 	return;

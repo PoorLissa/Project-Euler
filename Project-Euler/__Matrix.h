@@ -5,80 +5,6 @@
 
 // -----------------------------------------------------------------------------------------------
 
-class A {
-
-		int _a;
-
-	public:
-
-		A(int a = 123) : _a(a)	{ std::cout << " -->  A(" << _a << ")" << std::endl; }
-		~A()					{ std::cout << " --> ~A(" << _a << ")" << std::endl; }
-
-		operator int ()
-		{
-			return _a;
-		}
-};
-
-template <class Type>
-class B {
-
-		std::unique_ptr<Type[]> ptr;
-
-	public:
-
-		B()
-		{
-			std::cout << " -->  B()" << std::endl;
-
-			//ptr = std::make_unique<Type[]>(3);
-
-			Type* p = new Type[3];
-
-			ptr = std::unique_ptr<Type[]>(p);
-		}
-
-		B(const B& other)
-		{
-			ptr = std::make_unique<Type[]>(3);
-
-			for (size_t i = 0; i < 3; i++)
-			{
-				ptr.get()[i] = other.ptr.get()[i];
-			}
-		}
-
-		B(B && other) noexcept
-		{
-			ptr = std::move(other.ptr);
-		}
-
-		~B()
-		{
-			std::cout << " --> ~B()" << std::endl;
-		}
-
-		void print()
-		{
-			std::cout << " --> ";
-
-			if (ptr.get())
-			{
-				for (size_t i = 0; i < 3; i++)
-				{
-					std::cout << ptr.get()[i] << "; ";
-				}
-			}
-			else
-			{
-				std::cout << " is empty";
-			}
-
-			std::cout << std::endl;
-		}
-};
-
-
 template <class Type>
 class myMatrix {
 
@@ -92,7 +18,7 @@ class myMatrix {
 		~myMatrix();
 
 		myMatrix&	operator = (const myMatrix & );
-		myMatrix&	operator = (const myMatrix &&) noexcept;
+		myMatrix&	operator = (	  myMatrix &&) noexcept;
 
 		myMatrix	operator + (const myMatrix &) const;
 		myMatrix	operator - (const myMatrix &) const;
@@ -109,17 +35,16 @@ class myMatrix {
 
 	private:
 		size_t	_Cols, _Rows;
-		Type*	_data;
 
-		std::unique_ptr<Type[]> p;
+		std::unique_ptr<Type[]> _data;
 };
 
 // -----------------------------------------------------------------------------------------------
 
 template <class Type>
-myMatrix<Type>::myMatrix(size_t rows, size_t columns, Type val) : _Cols(columns), _Rows(rows), _data(nullptr)
+myMatrix<Type>::myMatrix(size_t rows, size_t columns, Type val) : _Cols(columns), _Rows(rows)
 {
-	_data = new Type[_Cols * _Rows];
+	_data = std::make_unique<Type[]>(_Cols * _Rows);
 
 	for (size_t i = 0; i < _Cols * _Rows; i++)
 		_data[i] = val;
@@ -128,9 +53,9 @@ myMatrix<Type>::myMatrix(size_t rows, size_t columns, Type val) : _Cols(columns)
 // -----------------------------------------------------------------------------------------------
 
 template <class Type>
-myMatrix<Type>::myMatrix(const myMatrix<Type> &other) : _Cols(other._Cols), _Rows(other._Rows), _data(nullptr)
+myMatrix<Type>::myMatrix(const myMatrix<Type> &other) : _Cols(other._Cols), _Rows(other._Rows)
 {
-	_data = new Type[_Cols * _Rows];
+	_data = std::make_unique<Type[]>(_Cols * _Rows);
 
 	for (size_t i = 0; i < _Cols * _Rows; i++)
 		_data[i] = other._data[i];
@@ -141,7 +66,7 @@ myMatrix<Type>::myMatrix(const myMatrix<Type> &other) : _Cols(other._Cols), _Row
 template <class Type>
 myMatrix<Type>::myMatrix(size_t rows, size_t columns, Type *data) : _Cols(columns), _Rows(rows), _data(nullptr)
 {
-	_data = new Type[_Cols * _Rows];
+	_data = std::make_unique<Type[]>(_Cols * _Rows);
 
 	for (size_t i = 0; i < _Cols * _Rows; i++)
 		_data[i] = *data++;
@@ -156,9 +81,9 @@ myMatrix<Type>::myMatrix(size_t rows, size_t columns, std::initializer_list<Type
 	if (args.size() != _Cols * _Rows)
 		throw std::invalid_argument("Matrix size does not match the size of initializer list");
 
-	_data = new Type[_Cols * _Rows];
+	_data = std::make_unique<Type[]>(_Cols * _Rows);
 
-	Type* dataIter = _data;
+	Type* dataIter = _data.get();
 
 	for (auto iter = args.begin(); iter != args.end(); ++iter)
 		*dataIter++ = *iter;
@@ -175,7 +100,6 @@ myMatrix<Type>::myMatrix(myMatrix<Type> && other) noexcept
 
 	other._Cols = 0u;
 	other._Rows = 0u;
-	other._data = nullptr;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -183,11 +107,8 @@ myMatrix<Type>::myMatrix(myMatrix<Type> && other) noexcept
 template <class Type>
 myMatrix<Type>::~myMatrix()
 {
-	if (_data)
-	{
-		delete[] _data;
-		_data = nullptr;
-	}
+	_Cols = 0u;
+	_Rows = 0u;
 }
 
 // -----------------------------------------------------------------------------------------------
@@ -219,7 +140,7 @@ myMatrix<Type>& myMatrix<Type>::operator = (const myMatrix<Type>& other)
 		_Cols = other._Cols;
 		_Rows = other._Rows;
 
-		_data = new Type[_Cols * _Rows];
+		_data = std::make_unique<Type[]>(_Cols * _Rows);
 
 		for (size_t i = 0u; i < _Cols * _Rows; i++)
 			_data[i] = other._data[i];
@@ -231,13 +152,10 @@ myMatrix<Type>& myMatrix<Type>::operator = (const myMatrix<Type>& other)
 // -----------------------------------------------------------------------------------------------
 
 template <class Type>
-myMatrix<Type>& myMatrix<Type>::operator = (const myMatrix<Type>&& other) noexcept
+myMatrix<Type>& myMatrix<Type>::operator = (myMatrix<Type>&& other) noexcept
 {
 	if (this != &other)
 	{
-		if (_data)
-			delete[] _data;
-
 		// Steal the data
 		_Rows = std::move(other._Rows);
 		_Cols = std::move(other._Cols);
@@ -246,7 +164,6 @@ myMatrix<Type>& myMatrix<Type>::operator = (const myMatrix<Type>&& other) noexce
 		// Leave the other object in empty state
 		other._Rows = 0u;
 		other._Cols = 0u;
-		other._data = nullptr;
 	}
 
 	return *this;
@@ -344,9 +261,9 @@ myMatrix<Type> myMatrix<Type>::operator * (const myMatrix<Type>& other) const
 
 	myMatrix<Type> res(_Rows, other._Cols, 0.0f);
 
-	Type* m1 = _data;
-	Type* m2 = other._data;
-	Type* m3 = res._data;
+	Type* m1 = _data.get();
+	Type* m2 = other._data.get();
+	Type* m3 = res._data.get();
 
 	for (size_t i = 0; i < res._Rows; i++)
 	{
@@ -378,7 +295,7 @@ myMatrix<Type> myMatrix<Type>::operator * (const myMatrix<Type>& other) const
 template <class Type>
 Type& myMatrix<Type>::at(size_t i, size_t j) const
 {
-	return *(_data + i * _Cols + j);
+	return *(_data.get() + i * _Cols + j);
 }
 
 // -----------------------------------------------------------------------------------------------
